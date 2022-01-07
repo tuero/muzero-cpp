@@ -1,0 +1,10 @@
+[submodule "external/libnop"]
+	path = external/libnop
+	url = https://github.com/google/libnop.git
+[submodule "external/abseil-cpp"]
+	path = external/abseil-cpp
+	url = https://github.com/abseil/abseil-cpp.git
+[submodule "external/tensorboard_logger"]
+	path = external/tensorboard_logger
+	url = https://github.com/RustingSword/tensorboard_logger.git
+	ignore = dirty
