@@ -296,13 +296,11 @@ VPRNetModel::LossInfo VPRNetModel::Learn(std::vector<types::BatchItem>& inputs) 
     double policy_loss_scalar = policy_loss.mean().item<double>();
     double reward_loss_scalar = reward_loss.mean().item<double>();
 
-    // Scale loss by correcting for bias introduced by PER using the importance sampling weights
-    value_loss = (is_priorities * value_loss).mean();
-    reward_loss = (is_priorities * reward_loss).mean();
-    policy_loss = (is_priorities * policy_loss).mean();
-
     // Add losses
     torch::Tensor total_loss = value_loss * value_loss_weight_ + reward_loss + policy_loss;
+
+    // Scale loss by correcting for bias introduced by PER using the importance sampling weights
+    total_loss = (is_priorities * total_loss).mean();
 
     // Optimize model
     model_->zero_grad();
