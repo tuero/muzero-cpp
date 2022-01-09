@@ -1,6 +1,6 @@
 # MuZero-CPP
 This project is a complete C++ implementation of the [MuZero](https://arxiv.org/abs/1911.08265) algorithm, inspired by the work done by [MuZero General](https://github.com/werner-duvaud/muzero-general). 
-The motivation behind this project is for the added speed C++ provides, as well as working in C++ environments where we don't want to leave the C++ runtime. 
+The motivation behind this project is for the added speed C++ provides, efficient batched inference on the GPU, as well as working in C++ environments where we don't want to leave the C++ runtime. 
 There are still many optimization tricks that can be used to improve efficiency, but there aren't immediate plans to do so.
 
 ## Features
