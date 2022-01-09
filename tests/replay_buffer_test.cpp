@@ -14,21 +14,23 @@ using namespace types;
 namespace buffer {
 namespace {
 
+constexpr int NUM_ACTIONS = 8;
+
 Observation action_to_observation(Action action) {
-    Observation obs(1*10*10, (double)action / 8);
+    Observation obs(1 * 10 * 10, (double)action / NUM_ACTIONS);
     return obs;
 }
 
 // Test creating a game history trajectory
 GameHistory make_history(int idx) {
     GameHistory history;
-    history.action_history = std::vector<Action>(10, idx % 8);
+    history.action_history = std::vector<Action>(10, idx % NUM_ACTIONS);
     history.reward_history = std::vector<double>(10, idx);
     history.to_play_history = std::vector<Player>(10, idx % 2);
     history.root_values = std::vector<double>(10, idx % 4);
     for (int i = 0; i < 10; ++i) {
-        history.child_visits.push_back(std::vector<double>(8, i));
-        history.observation_history.push_back(Observation(3*10*10, 1));
+        history.child_visits.push_back(std::vector<double>(NUM_ACTIONS, i));
+        history.observation_history.push_back(Observation(3 * 10 * 10, 1));
     }
     return history;
 }
@@ -65,21 +67,20 @@ void replay_buffer_test() {
     // Sample
     std::mt19937 rng(0);
     auto samples = replay_buffer.sample(rng);
-    REQUIRE_TRUE((int)samples.size() == config.batch_size);
-    for (const auto s : samples) {
-        REQUIRE_TRUE((int)s.actions.size() == config.num_unroll_steps + 1);
-        REQUIRE_TRUE((int)s.target_rewards.size() == config.num_unroll_steps + 1);
-        REQUIRE_TRUE((int)s.target_values.size() == config.num_unroll_steps + 1);
-        REQUIRE_TRUE((int)s.target_policies.size() == config.num_unroll_steps + 1);
-        REQUIRE_TRUE((int)s.gradient_scale.size() == config.num_unroll_steps + 1);
-    }
+    REQUIRE_TRUE(samples.num_samples == config.batch_size);
+    REQUIRE_TRUE((int)samples.actions.size() == config.batch_size * (config.num_unroll_steps + 1));
+    REQUIRE_TRUE((int)samples.target_rewards.size() == config.batch_size * (config.num_unroll_steps + 1));
+    REQUIRE_TRUE((int)samples.target_values.size() == config.batch_size * (config.num_unroll_steps + 1));
+    REQUIRE_TRUE((int)samples.target_policies.size() ==
+                 config.batch_size * NUM_ACTIONS * (config.num_unroll_steps + 1));
+    REQUIRE_TRUE((int)samples.gradient_scale.size() == config.batch_size);
 
     // Update priorities
     std::vector<double> errors;
     std::vector<int> indices;
-    for (int i = 0; i < (int) samples.size(); ++i) {
-        indices.push_back(samples[i].index);
-        errors.push_back(samples[i].priority * 0.5);
+    for (int i = 0; i < samples.num_samples; ++i) {
+        indices.push_back(samples.indices[i]);
+        errors.push_back(samples.priorities[i] * 0.5);
     }
 
     // Update priorities

@@ -70,10 +70,8 @@ double GameHistory::compute_target_value(int step, int td_steps, double discount
 }
 
 // Create the target values used for learning
-void GameHistory::make_target(int step, int td_steps, int num_unroll_steps, double discount,
-                              std::vector<Action> &action_batch, std::vector<double> &target_rewards,
-                              std::vector<double> &target_values,
-                              std::vector<std::vector<double>> &target_policies, std::mt19937 &rng) const {
+void GameHistory::make_target(int step, int td_steps, int num_unroll_steps, double discount, Batch &sample,
+                              std::mt19937 &rng) const {
     assert((int)child_visits.size() > 0);
     int NUM_ACTIONS = child_visits[0].size();
     std::uniform_int_distribution<int> uniform_dist(0, NUM_ACTIONS - 1);
@@ -87,11 +85,12 @@ void GameHistory::make_target(int step, int td_steps, int num_unroll_steps, doub
         // (observation index is next to action which led to this observation)
         bool NON_ABSORBING = (i < (int)root_values.size());
         bool NON_ABSORBING_END = (i <= (int)root_values.size());
-        target_values.push_back(NON_ABSORBING ? value : 0);
-        target_rewards.push_back(NON_ABSORBING_END ? reward_history[i] : 0);
-        target_policies.push_back(NON_ABSORBING ? child_visits[i]
-                                                : std::vector<double>(NUM_ACTIONS, 1.0 / NUM_ACTIONS));
-        action_batch.push_back(NON_ABSORBING_END ? action_history[i] : uniform_dist(rng));
+        sample.target_values.push_back(NON_ABSORBING ? value : 0);
+        sample.target_rewards.push_back(NON_ABSORBING_END ? reward_history[i] : 0);
+        std::vector<double> policy =
+            NON_ABSORBING ? child_visits[i] : std::vector<double>(NUM_ACTIONS, 1.0 / NUM_ACTIONS);
+        sample.target_policies.insert(sample.target_policies.end(), policy.begin(), policy.end());
+        sample.actions.push_back(NON_ABSORBING_END ? action_history[i] : uniform_dist(rng));
     }
 }
 

@@ -86,6 +86,18 @@ struct BatchItem {
     std::vector<double> gradient_scale;
 };
 
+struct Batch {
+    std::vector<double> priorities;
+    std::vector<int> indices;
+    std::vector<Action> actions;
+    Observation stacked_observations;
+    std::vector<double> target_rewards;
+    std::vector<double> target_values;
+    std::vector<double> target_policies;
+    std::vector<double> gradient_scale;
+    int num_samples;
+};
+
 // All necessary stored items for a game history
 struct GameHistory {
     std::vector<Observation> observation_history;
@@ -132,15 +144,10 @@ struct GameHistory {
      * @param step The starting step to retrieve
      * @param td_steps Number of future td steps to take into account for future value
      * @param num_unroll_steps Number of steps to unroll forward for each sample
-     * @param action_batch Actions taken along the trajectory
-     * @param target_rewards Rewards observed along the trajectory
-     * @param target_values Computed target values (sum of discounted rewards) along the trajectory
-     * @param target_policies Empirical policy as found from the MCTS
+     * @param sample Reference to batched sample to append to
      * @param rng Source of randomness, used for absorbing states
      */
-    void make_target(int step, int td_steps, int num_unroll_steps, double discount,
-                     std::vector<Action> &action_batch, std::vector<double> &target_rewards,
-                     std::vector<double> &target_values, std::vector<std::vector<double>> &target_policies,
+    void make_target(int step, int td_steps, int num_unroll_steps, double discount, Batch &sample,
                      std::mt19937 &rng) const;
 
     // Requirements for loading/saving struct

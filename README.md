@@ -1,5 +1,6 @@
 # MuZero-CPP
-This project is a complete C++ implementation of the [MuZero](https://arxiv.org/abs/1911.08265) algorithm. The motivation behind this project is for the added speed C++ provides, as well as working in C++ environments where we don't want to leave the C++ runtime. 
+This project is a complete C++ implementation of the [MuZero](https://arxiv.org/abs/1911.08265) algorithm, inspired by the work done by [MuZero General](https://github.com/werner-duvaud/muzero-general). 
+The motivation behind this project is for the added speed C++ provides, as well as working in C++ environments where we don't want to leave the C++ runtime. 
 There are still many optimization tricks that can be used to improve efficiency, but there aren't immediate plans to do so.
 
 ## Features
@@ -69,11 +70,10 @@ Some important arguments to consider:
 ### Training
 One can train Connect4 by the following:
 ```shell
-# CD into build
 $ cd build
 
 # Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=20 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 250000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4
 ```
 
 ### Safely Pausing
@@ -82,8 +82,10 @@ To pause the training, issue an abort signal `<CTRL + C>` and the current state 
 ### Resume Training
 To resume training, issue the same command which was used for training, but add the flag `--resume 1`. Note that some command line arguments can be changed, while others are checked and enforced (i.e. replay buffer max size). Not every case is checked, so it is best to use exactly the same arguments.
 ```shell
+$ cd build
+
 # Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=20 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --resume 1
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 250000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --resume 1
 ```
 
 ### Testing Against the Trained Agent
@@ -91,7 +93,9 @@ The `muzero_cpp::play_test_model` function can be used to test a trained model.
 The invocation should be the same as used to train, but with an addition `--test` command line argument (assuming you implement this, see the examples for details).
 As an example, if we trained on Connect4 from the above, we test our agent as such:
 ```shell
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=20 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --test 1
+$ cd build
+
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 250000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --test 1
 ``` 
 The opponent listed in the `config.opponent_type` is used during testing. 
 For 2 player games, you can manually play against your bot by setting `config.opponent_type = types::OpponentTypes::Human`.
@@ -115,6 +119,30 @@ To add a new environment, you must implement the following:
 
 See the examples for proper usage.
 
+## Pretrained Models
+Included is a pretrained model on the Connect4 environment. 
+To test the pretrained model, use the following command:
+```shell
+$ cd build
+$ ./examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/01-08-2022 --test
+``` 
+
+## Performance
+The choice of using C++ was for environment constraints and added performance that could be gained instead of dealing with threading in python. 
+There are certainly many improvements that can be made to this codebase, and they are welcomed.
+
+The following metrics are on training the Connect4 environment on a stock Intel 7820X, 64GB of system memory, Nvidia 3090, running on Ubuntu 20.04 using the Release build flags. The runtime configuration is given in the command window below.
+- Total training time of 5:46:14 
+- ~12.0 training steps per second
+- ~39.7 self play steps per second
+
+```shell
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=1000 --num_simulations 50 --max_training_steps 250000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.00005  --path /home/<USER>/Documents/muzero-cpp/examples/connect4/01-08-2022 --reanalyze 1 --explicit_learning 1
+``` 
+
+The full training statistics for this run can be found at the Tensorboard.dev page [here](https://tensorboard.dev/experiment/V4JoPZKAQM6gqsDvtbSGeA/#scalars&_smoothingWeight=0.906).
+
+
 ## Tensorboard Metrics
 The following metrics are tracked:
 - Evaluator:
@@ -135,3 +163,6 @@ The following metrics are tracked:
     - `Policy_loss`: Unweighted loss on the policy prediction from the prediction network
     - `Reward_loss`: Unweighted loss on the reward prediction from the dynamics network
 
+![tensorboard_evaluator](./assets/tensorboard_evaluator.png)
+![tensorboard_evaluator](./assets/tensorboard_workers.png)
+![tensorboard_evaluator](./assets/tensorboard_loss.png)

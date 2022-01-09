@@ -77,7 +77,8 @@ void scalar_to_support_probs_test() {
     torch::Tensor tensor_truth = torch::tensor({{0.0, 1.5, 21.25}, {0.0, -10.75, 2.0}});
     for (int i = 0; i < tensor_support.sizes()[1]; ++i) {
         torch::Tensor truth_slice = tensor_truth.index({Slice(), Slice(i, i + 1)});
-        torch::Tensor tensor_scalar = value_encoder.decode(tensor_support.index({Slice(), i, Slice()}), false);
+        torch::Tensor tensor_scalar =
+            value_encoder.decode(tensor_support.index({Slice(), i, Slice()}), false);
         bool result = torch::allclose(tensor_scalar, truth_slice, 1e-4, 1e-4);
         REQUIRE_TRUE(result);
     }

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <filesystem>
 #include <memory>
 #include <random>
 #include <string>
@@ -43,7 +44,7 @@ public:
     void update(int index, double priority) {
         double change = priority - tree_[index];
         tree_[index] = priority;
-        while (index > 0) {
+        while (index != 0) {
             index = (index - 1) / 2;
             tree_[index] += change;
         }
@@ -79,7 +80,8 @@ public:
      * @param history The history trajectory of the game played
      */
     void add(const std::vector<double> &priorities, const T &history) {
-        hist_map_[++map_counter_] = history;
+        map_counter_ += 1;
+        hist_map_[map_counter_] = history;
         for (int step = 0; step < (int)priorities.size(); ++step) {
             int index = position_ + capacity_ - 1;
             // If we are overwritting previous data, decrement history counter
@@ -87,9 +89,7 @@ public:
             int old_hist_id = data_[position_].second;
             if (old_hist_id > 0) {
                 --hist_count_[old_hist_id];
-                if (hist_count_[old_hist_id] == 0) {
-                    hist_count_.erase(old_hist_id);
-                }
+                if (hist_count_[old_hist_id] == 0) { hist_count_.erase(old_hist_id); }
             }
             // Add
             data_[position_] = {step, map_counter_};
@@ -130,6 +130,14 @@ public:
     }
 
     /**
+     * Get the stored path that the sum tree resides.
+     * @return full path of sum tree
+     */
+    std::string get_path() {
+        return absl::StrCat(path_, "sum_tree.nop");
+    }
+
+    /**
      * Save the SumTree for resume training
      */
     void save() {
@@ -148,7 +156,12 @@ public:
      * Load the SumTree for resume training
      */
     void load() {
+        // Check if we should quick exit because we are missiing files.
         const std::string path = absl::StrCat(path_, "sum_tree.nop");
+        if (!std::filesystem::exists(path)) {
+            std::cerr << "Error: " << path << " does not exist. Resuming with empty buffer." << std::endl;
+            return;
+        }
         nop::Deserializer<nop::StreamReader<std::ifstream>> deserializer{path};
         deserializer.Read(&(this->num_entries_));
         deserializer.Read(&(this->position_));
@@ -217,7 +230,7 @@ public:
      * target values, target policies, and gradient scale. The caller needs to convert into tensors of the
      * correct size.
      */
-    std::vector<types::BatchItem> sample(std::mt19937 &rng);
+    types::Batch sample(std::mt19937 &rng);
 
     /**
      * Insert a game history into the replay buffer.
