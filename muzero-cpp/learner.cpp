@@ -89,7 +89,7 @@ void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_mana
             DeviceManager::DeviceLoan model = device_manager->Get(config.batch_size, device_id);
             // Sample and send to model
             // The learner needs a non-const reference due to torch requiring non-cost pointers for tensor initialization
-            std::vector<BatchItem> batch = replay_buffer->sample(rng);
+            Batch batch = replay_buffer->sample(rng);
             VPRNetModel::LossInfo loss = model->Learn(batch);
             // Update stats and handoff model back 
             shared_stats->set_loss(loss.total_loss, loss.value, loss.policy, loss.reward);

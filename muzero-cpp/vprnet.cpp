@@ -189,47 +189,47 @@ std::vector<VPRNetModel::InferenceOutputs> VPRNetModel::RecurrentInference(
 }
 
 // Perform a learning step for the given batch
-VPRNetModel::LossInfo VPRNetModel::Learn(std::vector<types::BatchItem>& inputs) {
-    int batch_size = (int)inputs.size();
+VPRNetModel::LossInfo VPRNetModel::Learn(Batch& inputs) {
+    int batch_size = inputs.num_samples;
     int num_steps = config_.num_unroll_steps + 1;
     int num_actions = (int)config_.action_space.size();
-    auto options = torch::TensorOptions().dtype(torch::kFloat);
-    // Init tensors for batch items
-    torch::Tensor stacked_observations = torch::empty({batch_size, initial_flat_size_}, options);
-    torch::Tensor actions = torch::empty({batch_size, num_steps, action_flat_size_}, options);
-    torch::Tensor target_values = torch::empty({batch_size, num_steps}, options);
-    torch::Tensor target_rewards = torch::empty({batch_size, num_steps}, options);
-    torch::Tensor target_policies = torch::empty({batch_size, num_steps, num_actions}, options);
-    torch::Tensor gradient_scale = torch::empty({batch_size, num_steps}, options);
-    torch::Tensor is_priorities = torch::empty({batch_size, 1}, options);
+    auto options_float = torch::TensorOptions().dtype(torch::kFloat);
+    auto options_double = torch::TensorOptions().dtype(torch::kDouble);
 
-    // Place batch items into the above
-    for (int batch = 0; batch < batch_size; ++batch) {
-        stacked_observations[batch] =
-            torch::from_blob(inputs[batch].stacked_observation.data(), {initial_flat_size_}, options).clone();
-        for (int step = 0; step < num_steps; ++step) {
-            Observation encoded_action = config_.action_representation(inputs[batch].actions[step]);
-            actions[batch][step] =
-                torch::from_blob(encoded_action.data(), {action_flat_size_}, options).clone();
-            target_values[batch][step] = (float)inputs[batch].target_values[step];
-            target_rewards[batch][step] = (float)inputs[batch].target_rewards[step];
-            gradient_scale[batch][step] = (float)inputs[batch].gradient_scale[step];
-            target_policies[batch][step] =
-                torch::from_blob(inputs[batch].target_policies[step].data(), {num_actions}, {torch::kDouble})
-                    .to(options)
-                    .clone();
-        }
-        is_priorities[batch] = inputs[batch].priority;
+    // Encode actions
+    std::vector<float> encoded_actions;
+    encoded_actions.reserve(batch_size * num_steps * action_flat_size_);
+    for (auto const& a : inputs.actions) {
+        Observation encoded_action = config_.action_representation(a);
+        encoded_actions.insert(encoded_actions.end(), encoded_action.begin(), encoded_action.end());
     }
 
-    // Move tensors to device
-    stacked_observations = stacked_observations.to(torch_device_);
-    actions = actions.to(torch_device_);
-    target_values = target_values.to(torch_device_);
-    target_rewards = target_rewards.to(torch_device_);
-    target_policies = target_policies.to(torch_device_);
-    gradient_scale = gradient_scale.to(torch_device_);
-    is_priorities = is_priorities.to(torch_device_);
+    // Init tensors for batch items
+    torch::Tensor stacked_observations =
+        torch::from_blob(inputs.stacked_observations.data(), {batch_size, initial_flat_size_}, options_float).clone()
+            .to(torch_device_);
+    torch::Tensor actions =
+        torch::from_blob(encoded_actions.data(), {batch_size, num_steps, action_flat_size_}, options_float).clone()
+            .to(torch_device_);
+    torch::Tensor target_values =
+        torch::from_blob(inputs.target_values.data(), {batch_size, num_steps}, options_double).clone()
+            .to(torch::kFloat)
+            .to(torch_device_);
+    torch::Tensor target_rewards =
+        torch::from_blob(inputs.target_rewards.data(), {batch_size, num_steps}, options_double).clone()
+            .to(torch::kFloat)
+            .to(torch_device_);
+    torch::Tensor target_policies =
+        torch::from_blob(inputs.target_policies.data(), {batch_size, num_steps, num_actions}, options_double).clone()
+            .to(torch::kFloat)
+            .to(torch_device_);
+    torch::Tensor gradient_scale =
+        torch::from_blob(inputs.gradient_scale.data(), {batch_size, 1}, options_double).clone()
+            .to(torch::kFloat)
+            .to(torch_device_);
+    torch::Tensor is_priorities = torch::from_blob(inputs.priorities.data(), {batch_size, 1}, options_double).clone()
+                                      .to(torch::kFloat)
+                                      .to(torch_device_);
 
     // Reshape to expected size for network
     stacked_observations =
@@ -237,8 +237,10 @@ VPRNetModel::LossInfo VPRNetModel::Learn(std::vector<types::BatchItem>& inputs) 
     actions = actions.reshape({batch_size, num_steps, -1, encoded_obs_shape_.h, encoded_obs_shape_.w});
 
     // Convert the raw value/reward into the encoded support
-    target_values = value_encoder_.encode(target_values);       // (batch, num_steps, value.support_size)
-    target_rewards = reward_encoder_.encode(target_rewards);    // (batch, num_steps, reward.support_size)
+    torch::Tensor target_values_encoded =
+        value_encoder_.encode(target_values);    // (batch, num_steps, value.support_size)
+    torch::Tensor target_rewards_encoded =
+        reward_encoder_.encode(target_rewards);    // (batch, num_steps, reward.support_size)
 
     // Put model in train mode for learning
     model_->train();
@@ -247,7 +249,7 @@ VPRNetModel::LossInfo VPRNetModel::Learn(std::vector<types::BatchItem>& inputs) 
     model::InferenceOutput model_output = model_->initial_inference(stacked_observations);
     LossOutput loss_output =
         model_->loss(model_output.value, model_output.reward, model_output.policy_logits,
-                     target_values.index({Slice(), 0}), target_rewards.index({Slice(), 0}),
+                     target_values_encoded.index({Slice(), 0}), target_rewards_encoded.index({Slice(), 0}),
                      target_policies.index({Slice(), 0}));
     torch::Tensor value_loss = loss_output.value_loss;
     torch::Tensor reward_loss = torch::zeros_like(loss_output.reward_loss);
@@ -255,14 +257,12 @@ VPRNetModel::LossInfo VPRNetModel::Learn(std::vector<types::BatchItem>& inputs) 
 
     // Get updated errors for updating the prioritized replay buffer
     // |search value - observed n_step value|
-    std::vector<double> errors;
-    std::vector<int> indices;
-    torch::Tensor initial_values =
-        value_encoder_.decode(model_output.value).to(torch::kCPU).to(torch::kDouble);
-    for (int batch = 0; batch < batch_size; ++batch) {
-        errors.push_back(initial_values[batch].item<double>() - inputs[batch].target_values[0]);
-        indices.push_back(inputs[batch].index);
-    }
+    torch::Tensor error_values =
+        (value_encoder_.decode(model_output.value).to(torch::kCPU) -
+         target_values.index({Slice(), Slice(0, 1)}).to(torch::kCPU).to(torch::kDouble))
+            .squeeze(0);
+    std::vector<double> errors(error_values.data_ptr<double>(),
+                               error_values.data_ptr<double>() + error_values.numel());
 
     // Generate recurrent predictions
     torch::Tensor prev_state = model_output.encoded_state;
@@ -271,30 +271,25 @@ VPRNetModel::LossInfo VPRNetModel::Learn(std::vector<types::BatchItem>& inputs) 
             model_->recurrent_inference(prev_state, actions.index({Slice(), step}));
         // Scale the gradient at the start of the dynamics function (See paper Appendix G Training)
         model_output.encoded_state.register_hook([](torch::Tensor grad) { return grad * 0.5; });
-        LossOutput loss_output =
-            model_->loss(model_output.value, model_output.reward, model_output.policy_logits,
-                         target_values.index({Slice(), step}), target_rewards.index({Slice(), step}),
-                         target_policies.index({Slice(), step}));
+        LossOutput loss_output = model_->loss(
+            model_output.value, model_output.reward, model_output.policy_logits,
+            target_values_encoded.index({Slice(), step}), target_rewards_encoded.index({Slice(), step}),
+            target_policies.index({Slice(), step}));
         // Scale gradients by the number of unroll steps (See paper Appendix G Training)
         loss_output.value_loss.register_hook([&](torch::Tensor grad) {
-            return grad * gradient_scale.index({Slice(), 1});
+            return grad * gradient_scale.index({Slice(), 0});
         });
         loss_output.reward_loss.register_hook([&](torch::Tensor grad) {
-            return grad * gradient_scale.index({Slice(), 1});
+            return grad * gradient_scale.index({Slice(), 0});
         });
         loss_output.policy_loss.register_hook([&](torch::Tensor grad) {
-            return grad * gradient_scale.index({Slice(), 1});
+            return grad * gradient_scale.index({Slice(), 0});
         });
         value_loss = value_loss + loss_output.value_loss;
         reward_loss = reward_loss + loss_output.reward_loss;
         policy_loss = policy_loss + loss_output.policy_loss;
         prev_state = model_output.encoded_state;
     }
-
-    // Save non-scaled losses
-    double value_loss_scalar = value_loss.mean().item<double>();
-    double policy_loss_scalar = policy_loss.mean().item<double>();
-    double reward_loss_scalar = reward_loss.mean().item<double>();
 
     // Add losses
     torch::Tensor total_loss = value_loss * value_loss_weight_ + reward_loss + policy_loss;
@@ -307,8 +302,12 @@ VPRNetModel::LossInfo VPRNetModel::Learn(std::vector<types::BatchItem>& inputs) 
     total_loss.backward();
     model_optimizer_.step();
 
-    return {total_loss.item<double>(), value_loss_scalar, policy_loss_scalar,
-            reward_loss_scalar,        indices,           errors};
+    return {total_loss.item<double>(),
+            value_loss.mean().item<double>(),
+            policy_loss.mean().item<double>(),
+            reward_loss.mean().item<double>(),
+            inputs.indices,
+            errors};
 }
 
 }    // namespace muzero_cpp

@@ -86,14 +86,14 @@ std::tuple<int, GameHistory> PrioritizedReplayBuffer::sample_game(std::mt19937 &
 }
 
 // Get a batched sample from the replay buffer
-std::vector<BatchItem> PrioritizedReplayBuffer::sample(std::mt19937 &rng) {
+Batch PrioritizedReplayBuffer::sample(std::mt19937 &rng) {
     absl::MutexLock lock(&m_);
     // Update beta
     beta_ = std::min(1.0, beta_ + beta_increment_);
     double priority_segment = tree_.total_priority() / batch_size_;
 
-    std::vector<BatchItem> samples;
-    samples.reserve(batch_size_);
+    Batch samples;
+    samples.num_samples = batch_size_;
 
     // Sample N items for batch
     for (int i = 0; i < batch_size_; ++i) {
@@ -108,37 +108,27 @@ std::vector<BatchItem> PrioritizedReplayBuffer::sample(std::mt19937 &rng) {
         GameHistory game_history = std::get<3>(sample);
 
         // Make target values/rewards/policy/actions and insert into batch
-        std::vector<Action> actions;
-        std::vector<double> target_rewards;
-        std::vector<double> target_values;
-        std::vector<std::vector<double>> target_policies;
-        std::vector<double> gradient_scale;
-        game_history.make_target(step, td_steps_, num_unroll_steps_, discount_, actions, target_rewards,
-                                 target_values, target_policies, rng);
-
-        for (int j = 0; j < (int)actions.size(); ++j) {
-            gradient_scale.push_back(
-                1.0 / std::min(num_unroll_steps_, (int)game_history.action_history.size() - step));
-        }
+        game_history.make_target(step, td_steps_, num_unroll_steps_, discount_, samples, rng);
+        samples.gradient_scale.push_back(
+            1.0 / std::min(num_unroll_steps_, (int)game_history.action_history.size() - step));
 
         // Make a stacked observation + action sequence and insert into batch
         const Observation current_stacked_obs = game_history.get_stacked_observations(
             step, num_stacked_observations_, obs_shape_, action_channels_, action_rep_func_);
-        samples.push_back({priority, index, actions, current_stacked_obs, target_rewards, target_values,
-                           target_policies, gradient_scale});
+        samples.priorities.push_back(priority);
+        samples.indices.push_back(index);
+        samples.stacked_observations.insert(samples.stacked_observations.end(), current_stacked_obs.begin(),
+                                            current_stacked_obs.end());
     }
 
     // Get importance sampling weights
     for (int i = 0; i < batch_size_; ++i) {
-        samples[i].priority =
-            std::pow(tree_.get_size() * samples[i].priority / tree_.total_priority(), -beta_);
+        samples.priorities[i] =
+            std::pow(tree_.get_size() * samples.priorities[i] / tree_.total_priority(), -beta_);
     }
-    double max_value =
-        std::max_element(samples.begin(), samples.end(), [](const BatchItem lhs, const BatchItem rhs) {
-            return lhs.priority < rhs.priority;
-        })->priority;
+    double max_value = *std::max_element(samples.priorities.begin(), samples.priorities.end());
     for (int i = 0; i < batch_size_; ++i) {
-        samples[i].priority /= max_value;
+        samples.priorities[i] /= max_value;
     }
 
     // Returned values are flattened raw data vectors, need to reshape when converting to tensors

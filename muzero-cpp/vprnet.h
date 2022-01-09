@@ -102,7 +102,7 @@ public:
      * @param inputs Input batch (non-tensor'd)
      * @return Loss info, used for metric logging
      */
-    LossInfo Learn(std::vector<types::BatchItem>& inputs);
+    LossInfo Learn(types::Batch& inputs);
 
     /**
      * Save the model to a checkpoint model

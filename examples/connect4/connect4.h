@@ -13,6 +13,7 @@
 #include "muzero-cpp/types.h"
 
 // Simple connect4 environment implementation
+// Some of the logic taken from: https://github.com/werner-duvaud/muzero-general/blob/master/games/connect4.py
 class Connect4 {
 public:
     Connect4() : player_(1), board_{} {

@@ -73,7 +73,7 @@ One can train Connect4 by the following:
 $ cd build
 
 # Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=20 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4
 ```
 
 ### Safely Pausing
@@ -83,7 +83,7 @@ To pause the training, issue an abort signal `<CTRL + C>` and the current state 
 To resume training, issue the same command which was used for training, but add the flag `--resume 1`. Note that some command line arguments can be changed, while others are checked and enforced (i.e. replay buffer max size). Not every case is checked, so it is best to use exactly the same arguments.
 ```shell
 # Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=20 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --resume 1
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --resume 1
 ```
 
 ### Testing Against the Trained Agent
@@ -91,7 +91,7 @@ The `muzero_cpp::play_test_model` function can be used to test a trained model.
 The invocation should be the same as used to train, but with an addition `--test` command line argument (assuming you implement this, see the examples for details).
 As an example, if we trained on Connect4 from the above, we test our agent as such:
 ```shell
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=20 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --test 1
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 500000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --test 1
 ``` 
 The opponent listed in the `config.opponent_type` is used during testing. 
 For 2 player games, you can manually play against your bot by setting `config.opponent_type = types::OpponentTypes::Human`.

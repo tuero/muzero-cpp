@@ -1,6 +1,7 @@
 #include "muzero-cpp/models.h"
 
 #include <torch/torch.h>
+
 #include <iostream>
 
 #include "muzero-cpp/util.h"
@@ -146,8 +147,8 @@ void prediction_network_test() {
     REQUIRE_TRUE(output.policy.size(0) == batch_size && output.policy.size(1) == num_action_space);
     // Check output value
     REQUIRE_EQUAL(output.value.sizes().size(), 2);
-    REQUIRE_TRUE(output.value.size(0) == batch_size && output.value.size(1) == value_support_size);\
-    // Try to run backwards
+    REQUIRE_TRUE(output.value.size(0) == batch_size &&
+                 output.value.size(1) == value_support_size);    // Try to run backwards
     torch::Tensor loss = output.policy.mean() + output.value.mean();
     loss.backward();
 }

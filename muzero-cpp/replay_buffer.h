@@ -43,7 +43,7 @@ public:
     void update(int index, double priority) {
         double change = priority - tree_[index];
         tree_[index] = priority;
-        while (index > 0) {
+        while (index != 0) {
             index = (index - 1) / 2;
             tree_[index] += change;
         }
@@ -79,7 +79,8 @@ public:
      * @param history The history trajectory of the game played
      */
     void add(const std::vector<double> &priorities, const T &history) {
-        hist_map_[++map_counter_] = history;
+        map_counter_ += 1;
+        hist_map_[map_counter_] = history;
         for (int step = 0; step < (int)priorities.size(); ++step) {
             int index = position_ + capacity_ - 1;
             // If we are overwritting previous data, decrement history counter
@@ -87,9 +88,7 @@ public:
             int old_hist_id = data_[position_].second;
             if (old_hist_id > 0) {
                 --hist_count_[old_hist_id];
-                if (hist_count_[old_hist_id] == 0) {
-                    hist_count_.erase(old_hist_id);
-                }
+                if (hist_count_[old_hist_id] == 0) { hist_count_.erase(old_hist_id); }
             }
             // Add
             data_[position_] = {step, map_counter_};
@@ -217,7 +216,7 @@ public:
      * target values, target policies, and gradient scale. The caller needs to convert into tensors of the
      * correct size.
      */
-    std::vector<types::BatchItem> sample(std::mt19937 &rng);
+    types::Batch sample(std::mt19937 &rng);
 
     /**
      * Insert a game history into the replay buffer.

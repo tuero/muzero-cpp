@@ -12,6 +12,8 @@
 #include "absl/strings/str_format.h"
 #include "muzero-cpp/types.h"
 
+// Simple connect4 environment implementation
+// Some of the logic taken from: https://github.com/werner-duvaud/muzero-general/blob/master/games/tictactoe.py
 class TicTacToe {
 public:
     TicTacToe(int seed = 0) : player_(1), board_{}, rng_(seed) {
