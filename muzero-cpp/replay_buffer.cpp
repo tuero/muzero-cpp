@@ -154,7 +154,17 @@ void PrioritizedReplayBuffer::save() {
 // Load the replay buffer
 void PrioritizedReplayBuffer::load() {
     absl::MutexLock lock(&m_);
+    // Check if we should quick exit because we are missiing files.
     const std::string path = absl::StrCat(path_, "priority_buffer.nop");
+    if (!std::filesystem::exists(path)) {
+        std::cerr << "Error: " << path << " does not exist. Resuming with empty buffer." << std::endl;
+        return;
+    }
+    std::string tree_path = tree_.get_path();
+    if (!std::filesystem::exists(tree_path)) {
+        std::cerr << "Error: " << tree_path << " does not exist. Resuming with empty buffer." << std::endl;
+        return;
+    }
     nop::Deserializer<nop::StreamReader<std::ifstream>> deserializer{path};
     deserializer.Read(&(this->alpha_));
     deserializer.Read(&(this->beta_));

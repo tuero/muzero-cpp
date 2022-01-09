@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <filesystem>
 #include <memory>
 #include <random>
 #include <string>
@@ -129,6 +130,14 @@ public:
     }
 
     /**
+     * Get the stored path that the sum tree resides.
+     * @return full path of sum tree
+     */
+    std::string get_path() {
+        return absl::StrCat(path_, "sum_tree.nop");
+    }
+
+    /**
      * Save the SumTree for resume training
      */
     void save() {
@@ -147,7 +156,12 @@ public:
      * Load the SumTree for resume training
      */
     void load() {
+        // Check if we should quick exit because we are missiing files.
         const std::string path = absl::StrCat(path_, "sum_tree.nop");
+        if (!std::filesystem::exists(path)) {
+            std::cerr << "Error: " << path << " does not exist. Resuming with empty buffer." << std::endl;
+            return;
+        }
         nop::Deserializer<nop::StreamReader<std::ifstream>> deserializer{path};
         deserializer.Read(&(this->num_entries_));
         deserializer.Read(&(this->position_));
