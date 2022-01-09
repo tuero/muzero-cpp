@@ -33,7 +33,7 @@ set(MUZERO_CPP_SOURCES
 )
 
 # Create library object for the project
-add_library(muzero_cpp OBJECT ${MUZERO_CPP_SOURCES})
+add_library(muzero_cpp STATIC ${MUZERO_CPP_SOURCES})
 target_compile_options(muzero_cpp PUBLIC 
     -Wall -Wextra 
     $<$<CONFIG:RELEASE>:-O3> $<$<CONFIG:RELEASE>:-DNDEBUG>
@@ -42,9 +42,6 @@ target_compile_options(muzero_cpp PUBLIC
 
 target_include_directories(muzero_cpp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(muzero_cpp ${TORCH_LIBRARIES})
-
-# Used in separate targets to reference
-set(MUZERO_OBJECTS $<TARGET_OBJECTS:muzero_cpp>)
 
 # Internal source files can use #include "muzero-cpp/..."
 include_directories(..)
