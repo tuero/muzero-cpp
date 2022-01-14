@@ -11,10 +11,6 @@ namespace muzero_cpp {
 // Abstract game class which wraps and exposes the game to MuZero
 class AbstractGame {
 public:
-    AbstractGame(int seed) {
-        (void)seed;
-    };
-    AbstractGame() = delete;
     virtual ~AbstractGame() = default;
 
     /**

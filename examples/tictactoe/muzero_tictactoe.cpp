@@ -2,13 +2,13 @@
 #include <string>
 #include <vector>
 
-#include "tictactoe.h"
 #include "absl/flags/flag.h"
 #include "muzero-cpp/abstract_game.h"
 #include "muzero-cpp/config.h"
 #include "muzero-cpp/default_flags.h"
 #include "muzero-cpp/muzero.h"
 #include "muzero-cpp/types.h"
+#include "tictactoe.h"
 
 using namespace muzero_cpp;
 using namespace muzero_cpp::types;
@@ -16,8 +16,7 @@ using namespace muzero_cpp::muzero_config;
 
 class TicTacToeEnv : public AbstractGame {
 public:
-    TicTacToeEnv(int seed) : AbstractGame(seed), env_(seed) {
-        (void)seed;
+    TicTacToeEnv(int seed) : env_(seed) {
         step_ = 0;
     }
     TicTacToeEnv() = delete;
@@ -75,7 +74,7 @@ public:
     Action human_to_action() const override {
         std::vector<Action> legal_actions = env_.legal_actions();
         Action action;
-        while (true) {  
+        while (true) {
             std::cout << "Enter an action to play: ";
             std::cin >> action;
             if (std::find(legal_actions.begin(), legal_actions.end(), action) != legal_actions.end()) {
@@ -102,8 +101,8 @@ public:
     }
 
 private:
-    TicTacToe env_;         // environment
-    int step_;              // current step of the environment
+    TicTacToe env_;    // environment
+    int step_;         // current step of the environment
 };
 
 MuZeroNetworkConfig network_config;
@@ -131,7 +130,6 @@ double get_softmax(int step) {
 
 // Additional flag to choose whether to test or not
 ABSL_FLAG(bool, test, false, "Test using human input.");
-
 
 int main(int argc, char** argv) {
     // parse flags
@@ -171,5 +169,5 @@ int main(int argc, char** argv) {
         return muzero(config, game_factory<TicTacToeEnv>);
     }
 
-    return 0;    
+    return 0;
 }

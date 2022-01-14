@@ -16,9 +16,7 @@ using namespace muzero_cpp::muzero_config;
 
 class Connect4Env : public AbstractGame {
 public:
-    Connect4Env(int seed) : AbstractGame(seed) {
-        (void)seed;
-    }
+    Connect4Env(int seed) : env_(seed) {}
     Connect4Env() = delete;
     ~Connect4Env() = default;
 

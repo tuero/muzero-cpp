@@ -16,7 +16,8 @@
 // Some of the logic taken from: https://github.com/werner-duvaud/muzero-general/blob/master/games/connect4.py
 class Connect4 {
 public:
-    Connect4() : player_(1), board_{} {
+    Connect4(int seed) : player_(1), board_{} {
+        rng_.seed(seed);
         for (int r = 0; r < NUM_ROWS; ++r) {
             for (int c = 0; c < NUM_COLS; ++c) {
                 board_[r][c] = 0;
