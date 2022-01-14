@@ -14,9 +14,6 @@ There are still many optimization tricks that can be used to improve efficiency,
 - Easy to add environments
 - Play against the learned model (2 player games) in testing
 
-## TODO
-- Send partially completed game history trajectories to buffer (for games which are long)
-
 ## Dependencies
 The following libraries are used in this project. They are included as git submodules (minus libtorch), so it is recommended you install them by using the `git --recursive` argument.
 - [abseil-cpp](https://github.com/abseil/abseil-cpp/tree/ec0d76f1d012cc1a4b3b08dfafcfc5237f5ba2c9) (ec0d76f)
