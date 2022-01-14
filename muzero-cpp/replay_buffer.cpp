@@ -100,12 +100,12 @@ Batch PrioritizedReplayBuffer::sample(std::mt19937 &rng) {
         // Get sample via priority weighting
         std::uniform_real_distribution<double> uniform_dist(priority_segment * i, priority_segment * (i + 1));
         double value = uniform_dist(rng);
-        std::tuple<int, double, int, GameHistory> sample = tree_.get_leaf(value);
+        auto sample = tree_.get_leaf(value);
         // Unpack
         int index = std::get<0>(sample);
         double priority = std::get<1>(sample);
         int step = std::get<2>(sample);
-        GameHistory game_history = std::get<3>(sample);
+        GameHistory &game_history = std::get<3>(sample);
 
         // Make target values/rewards/policy/actions and insert into batch
         game_history.make_target(step, td_steps_, num_unroll_steps_, discount_, samples, rng);

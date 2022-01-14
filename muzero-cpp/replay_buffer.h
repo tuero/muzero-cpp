@@ -106,11 +106,11 @@ public:
      * @return A tuple containing the leaf index, the value at the leaf index,
      *         the sample game step, and the sample game history
      */
-    std::tuple<int, double, int, T> get_leaf(double value) {
+    auto get_leaf(double value) {
         int leaf_index = retrieve(0, value);
         int buffer_index = leaf_index - capacity_ + 1;
         return std::make_tuple(leaf_index, tree_[leaf_index], data_[buffer_index].first,
-                               hist_map_[data_[buffer_index].second]);
+                               std::ref(hist_map_[data_[buffer_index].second]));
     }
 
     /**
