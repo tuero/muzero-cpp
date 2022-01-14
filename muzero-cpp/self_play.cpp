@@ -80,9 +80,10 @@ void add_evaluator_stats(const std::shared_ptr<SharedStats>& shared_stats, const
 }    // namespace
 
 // Actor's main self play logic.
-GameHistory play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts, AbstractGame& game,
-                      const std::shared_ptr<SharedStats>& shared_stats, std::mt19937& rng, bool is_evaluator,
-                      bool render) {
+void play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts, AbstractGame& game,
+               const std::shared_ptr<SharedStats>& shared_stats, std::mt19937& rng,
+               ThreadedQueue<GameHistory>* trajectory_queue, bool is_evaluator, bool render,
+               util::StopToken* stop) {
     Observation observation = game.reset();
     GameHistory game_history;
     // Set the initial game history values
@@ -90,6 +91,9 @@ GameHistory play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS
     game_history.observation_history.push_back(observation);
     game_history.reward_history.push_back(0);
     game_history.to_play_history.push_back(game.to_play());
+
+    int hist_idx_start = 0;
+    int hist_idx_end = 0;
 
     if (render) { game.render(); }
 
@@ -103,10 +107,13 @@ GameHistory play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS
         (!is_evaluator || config.num_players == 1) ? OpponentTypes::Self : config.opponent_type;
 
     // Loop game until game is done
-    // Paper also suggests to store partial histories in longer games (Atari), 
+    // Paper also suggests to store partial histories in longer games (Atari),
     // but this isn't supported yet.
     bool done = false;
     while (!done) {
+        // Exit early if stop requested
+        if (stop && stop->stop_requested()) { return; }
+
         // Get stacked observation
         Observation stacked_observation =
             game_history.get_stacked_observations(-1, config.stacked_observations, config.observation_shape,
@@ -148,6 +155,18 @@ GameHistory play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS
         game_history.observation_history.push_back(observation);
         game_history.reward_history.push_back(step_return.reward);
         game_history.to_play_history.push_back(game.to_play());
+        ++hist_idx_end;
+
+        // Send history slice if game over or exceed maximum history length
+        bool send_hist =
+            (config.max_history_len > 0 && (hist_idx_end - hist_idx_start > config.max_history_len));
+        if (!is_evaluator && (done || send_hist)) {
+            if (!trajectory_queue->Push(game_history.get_slice(hist_idx_start, hist_idx_end),
+                                        absl::Seconds(10))) {
+                std::cerr << "Error: Unable to push trajectory to queue" << std::endl;
+            }
+            hist_idx_start = hist_idx_end;
+        }
     }
 
     // Add self play game stats for logging
@@ -156,8 +175,6 @@ GameHistory play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS
     } else {
         shared_stats->add_actor_stats(game_history.action_history.size() - 1, 1);
     }
-
-    return game_history;
 }
 
 // Actor's main self play logic.
@@ -169,10 +186,7 @@ void self_play_actor(const muzero_config::MuZeroConfig& config, std::unique_ptr<
     std::mt19937 rng(config.seed + actor_num);
     // Continue to play games until we are told to stop
     for (int game_num = 1; !stop->stop_requested(); ++game_num) {
-        if (!trajectory_queue->Push(play_game(config, mcts, *game, shared_stats, rng, false, false),
-                                    absl::Seconds(10))) {
-            std::cerr << "Error: Unable to push trajectory to queue" << std::endl;
-        }
+        play_game(config, mcts, *game, shared_stats, rng, trajectory_queue, false, false, stop);
     }
 }
 
@@ -184,7 +198,7 @@ void self_play_evaluator(const muzero_config::MuZeroConfig& config, std::unique_
     std::mt19937 rng(config.seed + actor_num);
     // Continue to play games until we are told to stop
     for (int game_num = 1; !stop->stop_requested(); ++game_num) {
-        play_game(config, mcts, *game, shared_stats, rng, true, false);
+        play_game(config, mcts, *game, shared_stats, rng, nullptr, true, false, stop);
     }
 }
 
@@ -193,7 +207,7 @@ void self_play_test(const muzero_config::MuZeroConfig& config, std::unique_ptr<A
                     std::shared_ptr<Evaluator> vpr_eval, std::shared_ptr<SharedStats> shared_stats) {
     MCTS mcts(config, config.seed, vpr_eval);
     std::mt19937 rng(config.seed);
-    play_game(config, mcts, *game, shared_stats, rng, true, true);
+    play_game(config, mcts, *game, shared_stats, rng, nullptr, true, true, nullptr);
 }
 
 }    // namespace muzero_cpp

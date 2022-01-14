@@ -34,7 +34,7 @@ struct MuZeroConfig {
     // General
     int seed = 0;                              // Seed to use for all sourcse of RNG
     int checkpoint_interval = 100;             // Interval of training steps to checkpoint
-    std::string path = "/opt/muzero-cpp/";    // Base path for all things being stored
+    std::string path = "/opt/muzero-cpp/";     // Base path for all things being stored
     std::string devices = "cpu:0";             // String of torch devices comma separated
     bool explicit_learning = false;            // Flag for first device to be blocked from inference
     int num_actors = 1;                        // Number of self-play actors
@@ -98,7 +98,9 @@ struct MuZeroConfig {
     double value_loss_weight = 1;    // Scale value loss to avoid overfitting to the value function
     int td_steps = 10;               // Number of future td steps to take into account for future value
     int num_unroll_steps = 5;        // Number of steps to unroll for each sample
-    bool reanalyze = false;          // Flag to run a reanalyze thread (See Appendix H : Reanalyze)
+    int max_history_len = -1;    // Maximum size of history before sending to replay buffer. Use -1 for the
+                                 // entire history to pushed as a single sample (instead of splitting up)
+    bool reanalyze = false;      // Flag to run a reanalyze thread (See Appendix H : Reanalyze)
 
     // Replay buffer (Prioritized replay)
     int replay_buffer_size = 100000;      // Number of total samples to store
@@ -214,6 +216,7 @@ struct MuZeroConfig {
         output_str += absl::StrFormat("\tValue loss weight: %.3f\n", value_loss_weight);
         output_str += absl::StrFormat("\tTD steps: %d\n", td_steps);
         output_str += absl::StrFormat("\tNum unroll steps: %d\n", num_unroll_steps);
+        output_str += absl::StrFormat("\tMax history length: %d\n", max_history_len);
         output_str += absl::StrFormat("\tReanalyze: %d\n", reanalyze);
         // Replay buffer
         output_str += "Replay buffer\n";

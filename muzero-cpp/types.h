@@ -150,6 +150,14 @@ struct GameHistory {
     void make_target(int step, int td_steps, int num_unroll_steps, double discount, Batch &sample,
                      std::mt19937 &rng) const;
 
+    /**
+     * Get a slice of the full history.
+     * @param start_idx The starting index
+     * @param end_idx The ending index
+     * @returns A partial game history
+     */
+    GameHistory get_slice(int start_idx, int end_idx) const;
+
     // Requirements for loading/saving struct
     NOP_STRUCTURE(GameHistory, observation_history, action_history, reward_history, to_play_history,
                   root_values, child_visits, reanalysed_predicted_root_values);

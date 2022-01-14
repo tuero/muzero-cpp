@@ -40,6 +40,7 @@ ABSL_DECLARE_FLAG(double, value_loss_weight);
 ABSL_DECLARE_FLAG(int, min_sample_size);
 ABSL_DECLARE_FLAG(int, td_steps);
 ABSL_DECLARE_FLAG(int, num_unroll_steps);
+ABSL_DECLARE_FLAG(int, max_history_len);
 ABSL_DECLARE_FLAG(double, per_alpha);
 ABSL_DECLARE_FLAG(double, per_beta);
 ABSL_DECLARE_FLAG(double, per_epsilon);

@@ -36,6 +36,8 @@ ABSL_FLAG(double, value_loss_weight, 0.25, "Value loss scaling to avoid overfitt
 ABSL_FLAG(int, min_sample_size, 256, "Minimum number of sample needed before training starts");
 ABSL_FLAG(int, td_steps, 10, "Number of future td steps to take into account for future value");
 ABSL_FLAG(int, num_unroll_steps, 5, "Number of steps to unroll for each sample");
+ABSL_FLAG(int, max_history_len, -1,
+          "Maximum history length before sending to replay buffer. Use -1 to ignore.");
 ABSL_FLAG(double, per_alpha, 1, "Priority exponent");
 ABSL_FLAG(double, per_beta, 1, "Correction for sampling bias");
 ABSL_FLAG(double, per_epsilon, 0.01, "Epsilon added to error to avoid 0's");
@@ -82,6 +84,7 @@ MuZeroConfig get_initial_config() {
     config.min_sample_size = absl::GetFlag(FLAGS_min_sample_size);
     config.td_steps = absl::GetFlag(FLAGS_td_steps);
     config.num_unroll_steps = absl::GetFlag(FLAGS_num_unroll_steps);
+    config.max_history_len = absl::GetFlag(FLAGS_max_history_len);
     config.per_alpha = absl::GetFlag(FLAGS_per_alpha);
     config.per_beta = absl::GetFlag(FLAGS_per_beta);
     config.per_epsilon = absl::GetFlag(FLAGS_per_epsilon);

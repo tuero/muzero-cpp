@@ -94,5 +94,26 @@ void GameHistory::make_target(int step, int td_steps, int num_unroll_steps, doub
     }
 }
 
+// Get a slice of the full history.
+GameHistory GameHistory::get_slice(int start_idx, int end_idx) const {
+    GameHistory hist;
+    // These are always offset by 1 (starting obs, obs occurs after action for example)
+    hist.observation_history.insert(hist.observation_history.end(), observation_history.begin() + start_idx,
+                                    observation_history.begin() + end_idx + 1);
+    hist.action_history.insert(hist.action_history.end(), action_history.begin() + start_idx,
+                               action_history.begin() + end_idx + 1);
+    hist.reward_history.insert(hist.reward_history.end(), reward_history.begin() + start_idx,
+                               reward_history.begin() + end_idx + 1);
+    hist.to_play_history.insert(hist.to_play_history.end(), to_play_history.begin() + start_idx,
+                                to_play_history.begin() + end_idx + 1);
+    // These are not offset, only inserted after every interaction
+    hist.root_values.insert(hist.root_values.end(), root_values.begin() + start_idx,
+                            root_values.begin() + end_idx);
+    hist.child_visits.insert(hist.child_visits.end(), child_visits.begin() + start_idx,
+                             child_visits.begin() + end_idx);
+    hist.reanalysed_predicted_root_values = reanalysed_predicted_root_values;
+    return hist;
+}
+
 }    // namespace types
 }    // namespace muzero_cpp
