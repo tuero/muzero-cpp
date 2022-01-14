@@ -71,7 +71,7 @@ public:
      * Returns a legal action given by human input.
      * @returns An action which is legal
      */
-    Action human_to_action() const override {
+    Action human_to_action() override {
         std::vector<Action> legal_actions = env_.legal_actions();
         Action action;
         while (true) {

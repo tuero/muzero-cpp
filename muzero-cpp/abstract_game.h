@@ -50,7 +50,7 @@ public:
      * Returns a legal action given by human input.
      * @returns An action which is legal
      */
-    virtual types::Action human_to_action() const = 0;
+    virtual types::Action human_to_action() = 0;
 
     /**
      * Render the environment for testing games.
