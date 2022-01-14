@@ -117,7 +117,7 @@ void play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts,
         // Get stacked observation
         Observation stacked_observation =
             game_history.get_stacked_observations(-1, config.stacked_observations, config.observation_shape,
-                                                  config.action_channels, config.action_representation);
+                                                  config.action_channels, config.action_representation_initial);
         Action action;
         MCTSReturn mcts_stats;
 

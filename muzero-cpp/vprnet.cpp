@@ -89,7 +89,7 @@ std::vector<VPRNetModel::InferenceOutputs> VPRNetModel::InitialInference(
 
     // Reshape to expected size for network (batch_size, flat) -> (batch_size, c, h, w)
     stacked_observations =
-        stacked_observations.reshape({batch_size, -1, encoded_obs_shape_.h, encoded_obs_shape_.w});
+        stacked_observations.reshape({batch_size, -1, config_.observation_shape.h, config_.observation_shape.w});
 
     // Move to device
     stacked_observations = stacked_observations.to(torch_device_);
@@ -140,7 +140,7 @@ std::vector<VPRNetModel::InferenceOutputs> VPRNetModel::RecurrentInference(
     for (int batch = 0; batch < batch_size; ++batch) {
         encoded_observations[batch] =
             torch::from_blob(inputs[batch].encoded_state.data(), {recurrent_flat_size_}, options).clone();
-        Observation encoded_action = config_.action_representation(inputs[batch].action);
+        Observation encoded_action = config_.action_representation_recurrent(inputs[batch].action);
         actions[batch] =
             torch::from_blob(encoded_action.data(), {(int)encoded_action.size()}, options).clone();
     }
@@ -200,7 +200,7 @@ VPRNetModel::LossInfo VPRNetModel::Learn(Batch& inputs) {
     std::vector<float> encoded_actions;
     encoded_actions.reserve(batch_size * num_steps * action_flat_size_);
     for (auto const& a : inputs.actions) {
-        Observation encoded_action = config_.action_representation(a);
+        Observation encoded_action = config_.action_representation_recurrent(a);
         encoded_actions.insert(encoded_actions.end(), encoded_action.begin(), encoded_action.end());
     }
 
@@ -233,7 +233,7 @@ VPRNetModel::LossInfo VPRNetModel::Learn(Batch& inputs) {
 
     // Reshape to expected size for network
     stacked_observations =
-        stacked_observations.reshape({batch_size, -1, encoded_obs_shape_.h, encoded_obs_shape_.w});
+        stacked_observations.reshape({batch_size, -1, config_.observation_shape.h, config_.observation_shape.w});
     actions = actions.reshape({batch_size, num_steps, -1, encoded_obs_shape_.h, encoded_obs_shape_.w});
 
     // Convert the raw value/reward into the encoded support

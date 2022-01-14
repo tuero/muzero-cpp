@@ -34,7 +34,7 @@ void reanalyze(const muzero_config::MuZeroConfig& config, std::shared_ptr<Evalua
         for (int i = 0; i < (int)game_history.root_values.size(); ++i) {
             Observation stacked_observation = game_history.get_stacked_observations(
                 i, config.stacked_observations, config.observation_shape, config.action_channels,
-                config.action_representation);
+                config.action_representation_initial);
             VPRNetModel::InferenceOutputs inference_output = vpr_eval->InitialInference(stacked_observation);
             reanalysed_predicted_root_values.push_back(inference_output.value);
         }

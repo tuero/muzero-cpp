@@ -25,7 +25,7 @@ PrioritizedReplayBuffer::PrioritizedReplayBuffer(const muzero_config::MuZeroConf
       td_steps_(config.td_steps),
       num_unroll_steps_(config.num_unroll_steps),
       obs_shape_(config.observation_shape),
-      action_rep_func_(config.action_representation),
+      action_rep_func_(config.action_representation_initial),
       tree_(config.replay_buffer_size, absl::StrCat(config.path, "/buffer/")),
       path_(absl::StrCat(config.path, "/buffer/")) {
     std::filesystem::create_directories(path_);

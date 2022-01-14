@@ -50,7 +50,7 @@ void replay_buffer_test() {
     config.td_steps = 5;
     config.num_unroll_steps = 5;
     config.observation_shape = ObservationShape{3, 10, 10};
-    config.action_representation = action_to_observation;
+    config.action_representation_initial = action_to_observation;
     config.replay_buffer_size = 10000;
     config.path = ".";
     PrioritizedReplayBuffer replay_buffer(config);

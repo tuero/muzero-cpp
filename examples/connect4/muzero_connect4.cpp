@@ -149,7 +149,8 @@ int main(int argc, char** argv) {
     config.min_value = -10;
     config.max_value = 10;
     config.opponent_type = OpponentTypes::Expert;
-    config.action_representation = encode_action;
+    config.action_representation_initial = encode_action;
+    config.action_representation_recurrent = encode_action;
     config.visit_softmax_temperature = get_softmax;
 
     // Perform learning or testing

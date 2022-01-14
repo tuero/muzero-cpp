@@ -113,7 +113,8 @@ struct MuZeroConfig {
     MuZeroNetworkConfig network_config;
 
     // Action int value to tensor mapping (action_channels)
-    types::ActionRepresentationFunction action_representation;
+    types::ActionRepresentationFunction action_representation_initial;
+    types::ActionRepresentationFunction action_representation_recurrent;
 
     // Defines a softmax temperature scheduler
     types::SoftmaxTemperatureFunction visit_softmax_temperature;
