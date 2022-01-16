@@ -89,14 +89,17 @@ public:
             int old_hist_id = data_[position_].second;
             if (old_hist_id > 0) {
                 --hist_count_[old_hist_id];
-                if (hist_count_[old_hist_id] == 0) { hist_count_.erase(old_hist_id); }
+                if (hist_count_[old_hist_id] == 0) { 
+                    num_entries_ -= hist_map_[old_hist_id].root_values.size();
+                    hist_map_.erase(old_hist_id); 
+                }
             }
             // Add
             data_[position_] = {step, map_counter_};
             ++hist_count_[map_counter_];
             update(index, priorities[step]);
             position_ = (position_ + 1) % capacity_;
-            num_entries_ = std::min(num_entries_ + 1, capacity_);
+            ++num_entries_;
         }
     }
 

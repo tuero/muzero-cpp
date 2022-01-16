@@ -82,7 +82,7 @@ bool play_test_model(const MuZeroConfig& config,
     auto shared_stats = std::make_shared<SharedStats>();
 
     // Play game
-    self_play_test(config, game_factory(config.seed), vpr_eval, shared_stats);
+    self_play_test(config, game_factory(config.seed), vpr_eval, shared_stats, &stop);
 
     return true;
 }

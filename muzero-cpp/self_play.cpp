@@ -112,12 +112,12 @@ void play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts,
     bool done = false;
     while (!done) {
         // Exit early if stop requested
-        if (stop && stop->stop_requested()) { return; }
+        if (stop->stop_requested()) { return; }
 
         // Get stacked observation
-        Observation stacked_observation =
-            game_history.get_stacked_observations(-1, config.stacked_observations, config.observation_shape,
-                                                  config.action_channels, config.action_representation_initial);
+        Observation stacked_observation = game_history.get_stacked_observations(
+            -1, config.stacked_observations, config.observation_shape, config.action_channels,
+            config.action_representation_initial);
         Action action;
         MCTSReturn mcts_stats;
 
@@ -141,7 +141,8 @@ void play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts,
 
         // Step environment
         StepReturn step_return = game.step(action);
-        done = step_return.done;
+        done = step_return.done ||
+               (config.max_moves > 0 && (int)game_history.root_values.size() < config.max_moves);
         observation = step_return.observation;
 
         // Render
@@ -204,10 +205,11 @@ void self_play_evaluator(const muzero_config::MuZeroConfig& config, std::unique_
 
 // Play against muzero for testing
 void self_play_test(const muzero_config::MuZeroConfig& config, std::unique_ptr<AbstractGame> game,
-                    std::shared_ptr<Evaluator> vpr_eval, std::shared_ptr<SharedStats> shared_stats) {
+                    std::shared_ptr<Evaluator> vpr_eval, std::shared_ptr<SharedStats> shared_stats,
+                    util::StopToken* stop) {
     MCTS mcts(config, config.seed, vpr_eval);
     std::mt19937 rng(config.seed);
-    play_game(config, mcts, *game, shared_stats, rng, nullptr, true, true, nullptr);
+    play_game(config, mcts, *game, shared_stats, rng, nullptr, true, true, stop);
 }
 
 }    // namespace muzero_cpp

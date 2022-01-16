@@ -51,9 +51,11 @@ void self_play_evaluator(const muzero_config::MuZeroConfig& config, std::unique_
  * @param game Copy of game (separate for each actor thread)
  * @param vpr_eval Evaluator for inference during MCTS
  * @param shared_stats Common self play and training stats
+ * @param stop Stop token, used to terminate the actor
  */
 void self_play_test(const muzero_config::MuZeroConfig& config, std::unique_ptr<AbstractGame> game,
-                    std::shared_ptr<Evaluator> vpr_eval, std::shared_ptr<SharedStats> shared_stats);
+                    std::shared_ptr<Evaluator> vpr_eval, std::shared_ptr<SharedStats> shared_stats,
+                    util::StopToken* stop);
 
 }    // namespace muzero_cpp
 
