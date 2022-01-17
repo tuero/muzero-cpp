@@ -53,7 +53,7 @@ double GameHistory::compute_target_value(int step, int td_steps, double discount
             (reanalysed_predicted_root_values) ? reanalysed_predicted_root_values.get() : root_values;
         value = values[bootstrap_index] * std::pow(discount, td_steps);
         // Value in view of player
-        if (to_play_history[step] == to_play_history[bootstrap_index]) { value *= -1; }
+        if (to_play_history[step] != to_play_history[bootstrap_index]) { value *= -1; }
     }
 
     // Sum of rewards with discounting
