@@ -110,6 +110,15 @@ void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_mana
             shared_stats->save(VPRNetModel::kMostRecentCheckpointStep);
             std::cout << "\33[2K\rcheckpoint saved: " << checkpoint_path << std::endl;
         }
+        if (step % config.model_sync_interval == 0) {
+            std::string checkpoint_path =
+                device_manager->Get(0, device_id)->SaveCheckpoint(VPRNetModel::kMostRecentCheckpointStep);
+            for (int i = 0; i < device_manager->Count(); ++i) {
+                if (i != device_id) { device_manager->Get(0, i)->LoadCheckpoint(checkpoint_path); }
+            }
+            shared_stats->save(VPRNetModel::kMostRecentCheckpointStep);
+            std::cout << "\33[2K\rmodel synced" << std::endl;
+        }
 
         // Check if we should wait due to training being too fast
         if (config.train_selfplay_ratio > 0) {

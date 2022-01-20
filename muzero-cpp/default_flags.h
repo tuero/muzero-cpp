@@ -12,6 +12,7 @@
 // Declaration for external access of the flags
 ABSL_DECLARE_FLAG(int, seed);
 ABSL_DECLARE_FLAG(int, checkpoint_interval);
+ABSL_DECLARE_FLAG(int, model_sync_interval);
 ABSL_DECLARE_FLAG(std::string, path);
 ABSL_DECLARE_FLAG(std::string, devices);
 ABSL_DECLARE_FLAG(bool, explicit_learning);

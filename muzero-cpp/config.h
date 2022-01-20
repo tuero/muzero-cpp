@@ -34,6 +34,7 @@ struct MuZeroConfig {
     // General
     int seed = 0;                              // Seed to use for all sourcse of RNG
     int checkpoint_interval = 100;             // Interval of training steps to checkpoint
+    int model_sync_interval = 100;             // Interval of training steps to sync model weights
     std::string path = "/opt/muzero-cpp/";     // Base path for all things being stored
     std::string devices = "cpu:0";             // String of torch devices comma separated
     bool explicit_learning = false;            // Flag for first device to be blocked from inference

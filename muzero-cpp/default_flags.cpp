@@ -6,7 +6,8 @@
 
 // Default flag values with hints
 ABSL_FLAG(int, seed, 0, "Seed for all sources of RNG.");
-ABSL_FLAG(int, checkpoint_interval, 100, "Interval of learning steps to checkpoint model");
+ABSL_FLAG(int, checkpoint_interval, 100, "Interval of learning steps to checkpoint model/buffer");
+ABSL_FLAG(int, model_sync_interval, 100, "Interval of learning steps to sync the models");
 ABSL_FLAG(std::string, path, "/opt/muzero-cpp/", "Base path to store all checkpoints and metrics");
 ABSL_FLAG(std::string, devices, "cpu", "List of devices to use to train and run inference");
 ABSL_FLAG(bool, explicit_learning, false, "Block first device from inference");
@@ -56,6 +57,7 @@ MuZeroConfig get_initial_config() {
     MuZeroConfig config;
     config.seed = absl::GetFlag(FLAGS_seed);
     config.checkpoint_interval = absl::GetFlag(FLAGS_checkpoint_interval);
+    config.model_sync_interval = absl::GetFlag(FLAGS_model_sync_interval);
     config.path = absl::GetFlag(FLAGS_path);
     config.devices = absl::GetFlag(FLAGS_devices);
     config.explicit_learning = absl::GetFlag(FLAGS_explicit_learning);
