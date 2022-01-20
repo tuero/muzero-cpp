@@ -3,6 +3,8 @@ This project is a complete C++ implementation of the [MuZero](https://arxiv.org/
 The motivation behind this project is for the added speed C++ provides, efficient batched inference on the GPU, as well as working in C++ environments where we don't want to leave the C++ runtime. 
 There are still many optimization tricks that can be used to improve efficiency, but there aren't immediate plans to do so.
 
+**Note**: I can't guarantee that this implementation is bug-free, as I don't have the computational resources to compare against some of the reported results.
+
 ## Features
 - Multi-threaded async actor inference
 - Multiple device (CPUs and GPUs) support for learning and inference
@@ -70,7 +72,7 @@ One can train Connect4 by the following:
 $ cd build
 
 # Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 250000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations=50 --max_training_steps=250000 --per_alpha=0.6 --per_beta=0.4 --per_beta_increment=0.0001 --reanalyze --path /home/<USER>/Documents/muzero-cpp/examples/connect4
 ```
 
 ### Safely Pausing
@@ -82,7 +84,7 @@ To resume training, issue the same command which was used for training, but add 
 $ cd build
 
 # Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 250000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --resume 1
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations=50 --max_training_steps=250000 --per_alpha=0.6 --per_beta=0.4 --per_beta_increment=0.0001 --reanalyze --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --resume 1
 ```
 
 ### Testing Against the Trained Agent
@@ -92,7 +94,7 @@ As an example, if we trained on Connect4 from the above, we test our agent as su
 ```shell
 $ cd build
 
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations 50 --max_training_steps 250000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.0001 --reanalyze 1 --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --test 1
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations=50 --max_training_steps=250000 --per_alpha=0.6 --per_beta=0.4 --per_beta_increment=0.0001 --reanalyze --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --test
 ``` 
 The opponent listed in the `config.opponent_type` is used during testing. 
 For 2 player games, you can manually play against your bot by setting `config.opponent_type = types::OpponentTypes::Human`.
@@ -134,7 +136,7 @@ The following metrics are on training the Connect4 environment on a stock Intel 
 - ~39.7 self play steps per second
 
 ```shell
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size 256 --min_sample_size=512 --value_loss_weight 0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=1000 --num_simulations 50 --max_training_steps 250000 --per_alpha 0.6 --per_beta 0.4 --per_beta_increment 0.00005  --path /home/<USER>/Documents/muzero-cpp/examples/connect4/01-08-2022 --reanalyze 1 --explicit_learning 1
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=1000 --num_simulations=50 --max_training_steps=250000 --per_alpha=0.6 --per_beta=0.4 --per_beta_increment=0.00005  --path /home/<USER>/Documents/muzero-cpp/examples/connect4/01-08-2022 --reanalyze --explicit_learning 1
 ``` 
 
 The full training statistics for this run can be found at the Tensorboard.dev page [here](https://tensorboard.dev/experiment/V4JoPZKAQM6gqsDvtbSGeA/#scalars&_smoothingWeight=0.906).
