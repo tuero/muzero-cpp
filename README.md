@@ -8,13 +8,19 @@ There are still many optimization tricks that can be used to improve efficiency,
 ## Features
 - Multi-threaded async actor inference
 - Multiple device (CPUs and GPUs) support for learning and inference
-- Reanalyze for fresh buffer values
+- Reanalyze for fresh buffer values (pseudo version)
 - Complex action representation options
 - Priority replay buffer
 - Tensorboard metric logging
 - Model, buffer, and metric checkpointing for resuming
 - Easy to add environments
 - Play against the learned model (2 player games) in testing
+
+## TODO
+- Implement the proper reanalyze algorithm (re-run MCTS to update policy)
+- Rework the device manager so that we have a separate model only for training and another for self play/reanalyze
+- Separate model could be lagged behind (load then checkpoint instead of other way around)
+- Figure out the ratio of workers for reanalyze vs self play
 
 ## Dependencies
 The following libraries are used in this project. They are included as git submodules (minus libtorch), so it is recommended you install them by using the `git --recursive` argument.
