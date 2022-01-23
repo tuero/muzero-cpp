@@ -137,16 +137,16 @@ $ ./examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --pat
 The choice of using C++ was for environment constraints and added performance that could be gained instead of dealing with threading in python. 
 There are certainly many improvements that can be made to this codebase, and they are welcomed.
 
-The following metrics are on training the Connect4 environment on a stock Intel 7820X, 64GB of system memory, Nvidia 3090, running on Ubuntu 20.04 using the Release build flags. The runtime configuration is given in the command window below.
-- Total training time of 4:54:17 
+The following metrics are on training the Connect4 environment on a stock Intel 7820X, 64GB of system memory, Nvidia 3090, running on Ubuntu 20.04 using the Release build flags. The runtime configuration is given in the command window below for an extended training session. Note that Connect4 in much fewer training steps.
+- Total training time of 9:48:43
 - ~13.5 training steps per second
 - ~39.7 self play steps per second
 
 ```shell
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=500000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
 ``` 
 
-The full training statistics for this run can be found at the Tensorboard.dev page [here](https://tensorboard.dev/experiment/V4JoPZKAQM6gqsDvtbSGeA/#scalars&_smoothingWeight=0.906).
+The full training statistics for this run can be found at the Tensorboard.dev page [here](https://tensorboard.dev/experiment/hLfo8K8fREi4uWP6LrlwIA/#scalars&_smoothingWeight=0.914).
 
 
 ## Tensorboard Metrics
