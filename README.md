@@ -8,19 +8,13 @@ There are still many optimization tricks that can be used to improve efficiency,
 ## Features
 - Multi-threaded async actor inference
 - Multiple device (CPUs and GPUs) support for learning and inference
-- Reanalyze for fresh buffer values (pseudo version)
+- Reanalyze for fresh buffer values (both value and policy updates)
 - Complex action representation options
 - Priority replay buffer
 - Tensorboard metric logging
 - Model, buffer, and metric checkpointing for resuming
 - Easy to add environments
 - Play against the learned model (2 player games) in testing
-
-## TODO
-- Implement the proper reanalyze algorithm (re-run MCTS to update policy)
-- Rework the device manager so that we have a separate model only for training and another for self play/reanalyze
-- Separate model could be lagged behind (load then checkpoint instead of other way around)
-- Figure out the ratio of workers for reanalyze vs self play
 
 ## Dependencies
 The following libraries are used in this project. They are included as git submodules (minus libtorch), so it is recommended you install them by using the `git --recursive` argument.
@@ -66,19 +60,26 @@ You can also add additional command line arguments by adding `ABSL_FLAG`s (see t
 
 Some important arguments to consider:
 - `path` The directory which will be used for checkpointing and resuming.
-- `devices` Torch style comma separated list of devices (with the first listed being prioritized for training). E.g. 
+- `devices` Torch style comma separated list of devices which a model will be spawned on for each item. A minimum of 2 is needed, with the first listed being used solely for training). E.g. 
+    - `--path "cuda:0,cuda:0"`
     - `--path "cuda:0,cuda:1"`
-    - `--path "cpu"`
+    - `--path "cuda:0,cpu"`
 - `min_sample_size` Should be at least as big as `batch_size`
-- `num_actors` Number of actor threads to spawn. It is also recommended to have `initial_inference_batch_size` and `recurrent_inference_batch_size` equal to the number of actors, as this will increase the efficiency by batching inference queries rather than having threads wait for a model to become available.
+- `num_actors` Number of self-play actor threads to spawn. 
+- `num_reanalyze_actors` Number of reanalyze actor threads to spawn. 
+- `train_reanalyze_ratio` Ratio of samples the learner will sample from the reananlyze buffer. This should probably match the ratio of actors you spawn for self-play/reanalyze to keep things efficient.
+- It is also recommended to have `initial_inference_batch_size` and `recurrent_inference_batch_size` equal to the number of total actors, as this will increase the efficiency by batching inference queries rather than having threads wait for a model to become available.
 
 ### Training
 One can train Connect4 by the following:
 ```shell
 $ cd build
 
-# Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations=50 --max_training_steps=250000 --per_alpha=0.6 --per_beta=0.4 --per_beta_increment=0.0001 --reanalyze --path /home/<USER>/Documents/muzero-cpp/examples/connect4
+# Run the connect4 binary without reanalyze
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
+
+# Run the connect4 binary with 50% of samples coming from reanalyze
+$ ./examples/connect4/muzero_connect4 --num_actors=5 --num_reananlyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-50
 ```
 
 ### Safely Pausing
@@ -90,17 +91,17 @@ To resume training, issue the same command which was used for training, but add 
 $ cd build
 
 # Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations=50 --max_training_steps=250000 --per_alpha=0.6 --per_beta=0.4 --per_beta_increment=0.0001 --reanalyze --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --resume 1
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --resume
 ```
 
 ### Testing Against the Trained Agent
 The `muzero_cpp::play_test_model` function can be used to test a trained model. 
-The invocation should be the same as used to train, but with an addition `--test` command line argument (assuming you implement this, see the examples for details).
+The invocation should be the same as used to train (only some of the arguments are needed but its safe to use all the args used in training), but with an addition `--test` command line argument (assuming you implement this, see the examples for details).
 As an example, if we trained on Connect4 from the above, we test our agent as such:
 ```shell
 $ cd build
 
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=200 --num_simulations=50 --max_training_steps=250000 --per_alpha=0.6 --per_beta=0.4 --per_beta_increment=0.0001 --reanalyze --path /home/<USER>/Documents/muzero-cpp/examples/connect4 --test
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --test
 ``` 
 The opponent listed in the `config.opponent_type` is used during testing. 
 For 2 player games, you can manually play against your bot by setting `config.opponent_type = types::OpponentTypes::Human`.
@@ -129,7 +130,7 @@ Included is a pretrained model on the Connect4 environment.
 To test the pretrained model, use the following command:
 ```shell
 $ cd build
-$ ./examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/01-08-2022 --test
+$ ./examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --test
 ``` 
 
 ## Performance
@@ -137,12 +138,12 @@ The choice of using C++ was for environment constraints and added performance th
 There are certainly many improvements that can be made to this codebase, and they are welcomed.
 
 The following metrics are on training the Connect4 environment on a stock Intel 7820X, 64GB of system memory, Nvidia 3090, running on Ubuntu 20.04 using the Release build flags. The runtime configuration is given in the command window below.
-- Total training time of 5:46:14 
-- ~12.0 training steps per second
+- Total training time of 4:54:17 
+- ~13.5 training steps per second
 - ~39.7 self play steps per second
 
 ```shell
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=1000 --num_simulations=50 --max_training_steps=250000 --per_alpha=0.6 --per_beta=0.4 --per_beta_increment=0.00005  --path /home/<USER>/Documents/muzero-cpp/examples/connect4/01-08-2022 --reanalyze --explicit_learning 1
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
 ``` 
 
 The full training statistics for this run can be found at the Tensorboard.dev page [here](https://tensorboard.dev/experiment/V4JoPZKAQM6gqsDvtbSGeA/#scalars&_smoothingWeight=0.906).
@@ -160,8 +161,9 @@ The following metrics are tracked:
     - `Self_played_games`: Total number of games completed through self play by all actors
     - `Self_played_steps`: Total environment steps completed through self play by all actors
     - `Training_steps`: Total training steps (i.e. model updates)
-    - `Reanalyze_games`: Total number of games which have had their root values reanalyzed
-    - `Training_per_selfplay_step_ratio`: Ratio of training steps to self play steps, used to monitor if actors are feeding data to replay buffer too fast or if model is not being fed enough fresh trajectories
+    - `Reanalyze_games`: Total number of games which have had their root values and policy reanalyzed
+    - `Reanalyze_steps`: Total number of game steps which have had their root values and policy reanalyzed
+    - `Training_per_selfplay_step_ratio`: Ratio of training steps to self play and reanalyze steps, used to monitor if actors are feeding data to replay buffer too fast or if model is not being fed enough fresh trajectories
 - Loss:
     - `Total_weighted_loss`: Total loss (minus l2) weighted by importance sampling and the value loss scale
     - `Value_loss`: Unweighted loss on the value prediction from the prediction network

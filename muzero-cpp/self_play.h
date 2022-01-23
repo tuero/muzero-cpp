@@ -7,6 +7,7 @@
 #include "muzero-cpp/abstract_game.h"
 #include "muzero-cpp/mcts.h"
 #include "muzero-cpp/queue.h"
+#include "muzero-cpp/replay_buffer.h"
 #include "muzero-cpp/shared_stats.h"
 #include "muzero-cpp/types.h"
 #include "muzero-cpp/util.h"
@@ -28,6 +29,21 @@ namespace muzero_cpp {
  */
 void self_play_actor(const muzero_config::MuZeroConfig& config, std::unique_ptr<AbstractGame> game,
                      int actor_num, ThreadedQueue<types::GameHistory>* trajectory_queue,
+                     std::shared_ptr<Evaluator> vpr_eval, std::shared_ptr<SharedStats> shared_stats,
+                     util::StopToken* stop);
+
+/**
+ * Reanalyze actor's main logic
+ * Continues to sample old trajectories and update the policy/value using a fresher model
+ * @param config Muzero config
+ * @param reanalyze_buffer Reanalyze buffer to pull samples from
+ * @param actor_num Id of the actor
+ * @param vpr_eval Evaluator for inference during MCTS
+ * @param shared_stats Common self play and training stats
+ * @param stop Stop token, used to terminate the actor
+ */
+void reanalyze_actor(const muzero_config::MuZeroConfig& config,
+                     std::shared_ptr<buffer::PrioritizedReplayBuffer> reanalyze_buffer, int actor_num,
                      std::shared_ptr<Evaluator> vpr_eval, std::shared_ptr<SharedStats> shared_stats,
                      util::StopToken* stop);
 

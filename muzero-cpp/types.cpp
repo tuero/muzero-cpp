@@ -106,6 +106,8 @@ GameHistory GameHistory::get_slice(int start_idx, int end_idx) const {
                                reward_history.begin() + end_idx + 1);
     hist.to_play_history.insert(hist.to_play_history.end(), to_play_history.begin() + start_idx,
                                 to_play_history.begin() + end_idx + 1);
+    hist.legal_actions.insert(hist.legal_actions.end(), legal_actions.begin() + start_idx,
+                              legal_actions.begin() + end_idx + 1);
     // These are not offset, only inserted after every interaction
     hist.root_values.insert(hist.root_values.end(), root_values.begin() + start_idx,
                             root_values.begin() + end_idx);

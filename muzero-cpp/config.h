@@ -39,6 +39,7 @@ struct MuZeroConfig {
     std::string devices = "cpu:0";             // String of torch devices comma separated
     bool explicit_learning = false;            // Flag for first device to be blocked from inference
     int num_actors = 1;                        // Number of self-play actors
+    int num_reanalyze_actors = 0;              // Number of reanalyze actors
     int num_evaluators = 1;                    // Number of evaluators to test learning performance
     int initial_inference_batch_size = 1;      // Batch sized use for initial inference
     int recurrent_inference_batch_size = 1;    // Batch sized use for recurrent inference
@@ -80,8 +81,6 @@ struct MuZeroConfig {
                                          // (leave negative to ignore)
     int num_simulations = 50;            // Number of MCTS simulations per move
     double discount = 0.997;             // Discount factor for reward
-    double train_selfplay_ratio = -1;    // Ratio of training steps per self play step
-                                         // (leave negative to ignore)
 
     // Root prior dirichlet exploration noise
     double dirichlet_alpha = 0.3;       // Dirichlet distribution alpha parameter
@@ -101,14 +100,15 @@ struct MuZeroConfig {
     int num_unroll_steps = 5;        // Number of steps to unroll for each sample
     int max_history_len = -1;    // Maximum size of history before sending to replay buffer. Use -1 for the
                                  // entire history to pushed as a single sample (instead of splitting up)
-    bool reanalyze = false;      // Flag to run a reanalyze thread (See Appendix H : Reanalyze)
+    double train_reanalyze_ratio = 0;    // Ratio training samples that come from reanalyze (0 to not have reanalzye)
 
     // Replay buffer (Prioritized replay)
-    int replay_buffer_size = 100000;      // Number of total samples to store
-    double per_alpha = 1;                 // Priority exponent
-    double per_beta = 1;                  // Correction for sampling bias
-    double per_epsilon = 0.01;            // Epsilon added to error to avoid 0's
-    double per_beta_increment = 0.001;    // How much to increment beta (caps at 1.0)
+    int replay_buffer_size = 100000;       // Number of total fresh self-play samples to store
+    int reanalyze_buffer_size = 100000;    // Number of total samples to store for reanalyze
+    double per_alpha = 1;                  // Priority exponent
+    double per_beta = 1;                   // Correction for sampling bias
+    double per_epsilon = 0.01;             // Epsilon added to error to avoid 0's
+    double per_beta_increment = 0.001;     // How much to increment beta (caps at 1.0)
 
     // network
     MuZeroNetworkConfig network_config;
@@ -159,9 +159,13 @@ struct MuZeroConfig {
         output_str += "General\n";
         output_str += absl::StrFormat("\tSeed: %d\n", seed);
         output_str += absl::StrFormat("\tCheckpoint interval: %d\n", checkpoint_interval);
+        output_str += absl::StrFormat("\tModel sync interval: %d\n", model_sync_interval);
         output_str += absl::StrFormat("\tPath: %s\n", path);
         output_str += absl::StrFormat("\tDevices: %s\n", devices);
+        output_str += absl::StrFormat("\tExplicit learning: %s\n", explicit_learning);
         output_str += absl::StrFormat("\tNumber of actors: %d\n", num_actors);
+        output_str += absl::StrFormat("\tNumber of reananlyze actors: %d\n", num_reanalyze_actors);
+        output_str += absl::StrFormat("\tNumber of evaluator actors: %d\n", num_evaluators);
         output_str += absl::StrFormat("\tInitial inference batch size: %d\n", initial_inference_batch_size);
         output_str +=
             absl::StrFormat("\tRecurrent inference batch size: %d\n", recurrent_inference_batch_size);
@@ -202,7 +206,6 @@ struct MuZeroConfig {
         output_str += absl::StrFormat("\tMax moves: %d\n", max_moves);
         output_str += absl::StrFormat("\tNumber of simulations: %d\n", num_simulations);
         output_str += absl::StrFormat("\tDiscount: %.3f\n", discount);
-        output_str += absl::StrFormat("\tTrain Selfplay ratio: %.3f\n", train_selfplay_ratio);
         // Self play
         output_str += "Dirichlet\n";
         output_str += absl::StrFormat("\tDirichlet alpha: %.3f\n", dirichlet_alpha);
@@ -219,10 +222,11 @@ struct MuZeroConfig {
         output_str += absl::StrFormat("\tTD steps: %d\n", td_steps);
         output_str += absl::StrFormat("\tNum unroll steps: %d\n", num_unroll_steps);
         output_str += absl::StrFormat("\tMax history length: %d\n", max_history_len);
-        output_str += absl::StrFormat("\tReanalyze: %d\n", reanalyze);
+        output_str += absl::StrFormat("\tTrain reanalyze ratio: %.3f\n", train_reanalyze_ratio);
         // Replay buffer
         output_str += "Replay buffer\n";
         output_str += absl::StrFormat("\tReplay buffer size: %d\n", replay_buffer_size);
+        output_str += absl::StrFormat("\tReplay buffer size: %d\n", reanalyze_buffer_size);
         output_str += absl::StrFormat("\tPER alpha: %.3f\n", per_alpha);
         output_str += absl::StrFormat("\tPER beta: %.3f\n", per_beta);
         output_str += absl::StrFormat("\tPER epsilon: %.5f\n", per_epsilon);

@@ -42,7 +42,8 @@ void metric_logger(const MuZeroConfig& config, std::shared_ptr<SharedStats> shar
         writer.add_scalar("2.Workers/2.Self_played_steps", step, (double)stats.num_played_steps);
         writer.add_scalar("2.Workers/3.Training_steps", step, (double)stats.training_step);
         writer.add_scalar("2.Workers/4.Reanalyze_games", step, (double)stats.num_reanalyze_games_);
-        writer.add_scalar("2.Workers/5.Training_per_selfplay_step_ratio", step,
+        writer.add_scalar("2.Workers/5.Reanalyze_steps", step, (double)stats.num_reanalyze_steps_);
+        writer.add_scalar("2.Workers/6.Training_per_selfplay_step_ratio", step,
                           (double)stats.training_step / std::max(1, stats.num_played_steps));
 
         // Loss
@@ -53,11 +54,10 @@ void metric_logger(const MuZeroConfig& config, std::shared_ptr<SharedStats> shar
 
         // Log to console
         std::cout << "\33[2K\r";
-        std::cout << absl::StrFormat("Eval reward: %6.2f, Train step: %d/%d, Selfplay games: %d, Train "
-                                     "speed: %.2f s/s, Selfplay speed %.2f steps/s",
-                                     stats.evaluator_total_reward, stats.training_step,
-                                     config.max_training_steps, stats.num_played_games, stats.train_speed,
-                                     stats.selfplay_speed);
+        std::cout << absl::StrFormat("Train step: %d/%d, Selfplay games: %d, Reanalyze "
+                                     "trajs: %d, Train speed: %.2f s/s, Selfplay speed %.2f steps/s",
+                                     stats.training_step, config.max_training_steps, stats.num_played_games,
+                                     stats.num_reanalyze_games_, stats.train_speed, stats.selfplay_speed);
         std::fflush(stdout);
 
         // Sleep

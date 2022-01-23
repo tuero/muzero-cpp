@@ -112,13 +112,30 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
 
     { device_manager.Get(0)->print(); }
 
-    // Nothing to train on
-    if (device_manager.Count() == 0) {
-        std::cerr << "No devices specified?" << std::endl;
+    // Check for some things which wouldn't make sense. This isn't robust for all cases.
+    // Some input may crash if you try something that shouldn't make senese.
+    // Nothing to train and act on
+    if (device_manager.Count() < 2) {
+        std::cerr << "Need to specify at least 2 devices." << std::endl;
+        return false;
+    }
+    // Can't have 0 samples being taken from reananlyze
+    if (config.train_reanalyze_ratio == 1) {
+        std::cerr << "Train reanalyze ratio should be in range [0, 1)." << std::endl;
+        return false;
+    }
+    // If we wan't to use reananlyze, we probably should have some reananlyze actors
+    if (config.train_reanalyze_ratio > 0 and config.num_reanalyze_actors == 0) {
+        std::cerr << "If using reananlyze then set config.num_reanalyze_actors > 0." << std::endl;
         return false;
     }
 
     std::cout << "Using " << device_manager.Count() << " devices." << std::endl;
+
+    // Set first device off-limits from inference if requested
+    // This is to ensure that actors/evaluator are using a target network and not the immediate fresh weights
+    // for stability
+    device_manager.SetLearning(true);
 
     // Sync all models so that they have the same weights
     {
@@ -130,14 +147,16 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
     }
 
     // Shared evaluator
+    // Add to batch size for # of evaluators + actors
+    int total_actors = config.num_actors + config.num_reanalyze_actors;
     int initial_inference_batch_size =
-        std::max(1, std::min(config.initial_inference_batch_size, config.num_actors + 1));
+        std::max(1, std::min(config.initial_inference_batch_size, total_actors + 1));
     int recurrent_inference_batch_size =
-        std::max(1, std::min(config.recurrent_inference_batch_size, config.num_actors + 1));
+        std::max(1, std::min(config.recurrent_inference_batch_size, total_actors + 1));
     int initial_inference_threads =
-        std::max(1, std::min(config.initial_inference_threads, (1 + config.num_actors + 1) / 2));
+        std::max(1, std::min(config.initial_inference_threads, (1 + total_actors + 1) / 2));
     int recurrent_inference_threads =
-        std::max(1, std::min(config.initial_inference_threads, (1 + config.num_actors + 1) / 2));
+        std::max(1, std::min(config.initial_inference_threads, (1 + total_actors + 1) / 2));
     auto vpr_eval = std::make_shared<VPRNetEvaluator>(
         &device_manager, initial_inference_batch_size, initial_inference_threads,
         recurrent_inference_batch_size, recurrent_inference_threads);
@@ -177,18 +196,21 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
     std::cout << "Spawned " << 1 << " metrics tracker." << std::endl;
 
     // Reanalyze
-    auto replay_buffer = std::make_shared<PrioritizedReplayBuffer>(config);
+    auto replay_buffer =
+        std::make_shared<PrioritizedReplayBuffer>(config, config.replay_buffer_size, "replay_buffer");
+    auto reanalyze_buffer =
+        std::make_shared<PrioritizedReplayBuffer>(config, config.reanalyze_buffer_size, "reanalyze_buffer");
     std::vector<std::thread> reanalyse_threads;
-    if (config.reanalyze) {
-        reanalyse_threads.push_back(
-            std::thread(reanalyze, std::cref(config), vpr_eval, replay_buffer, shared_stats, &stop));
-        std::cout << "Spawned " << 1 << " reanalyse thread." << std::endl;
+    for (int i = 0; i < config.num_reanalyze_actors; ++i) {
+        reanalyse_threads.push_back(std::thread(reanalyze_actor, std::cref(config), reanalyze_buffer, i,
+                                                vpr_eval, shared_stats, &stop));
     }
+    std::cout << "Spawned " << config.num_reanalyze_actors << " reanalyse actors." << std::endl;
 
     // Start to learn
     std::cout << "Starting learning." << std::endl;
     if (config.resume) { replay_buffer->load(); }
-    learn(config, &device_manager, replay_buffer, &trajectory_queue, shared_stats, &stop);
+    learn(config, &device_manager, replay_buffer, reanalyze_buffer, &trajectory_queue, shared_stats, &stop);
 
     // Empty the queue so that the actors can exit.
     trajectory_queue.BlockNewValues();

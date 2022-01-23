@@ -12,6 +12,7 @@
 #include "muzero-cpp/types.h"
 
 namespace muzero_cpp {
+using namespace buffer;
 using namespace types;
 using namespace algorithm;
 
@@ -91,10 +92,12 @@ void play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts,
     game_history.observation_history.push_back(observation);
     game_history.reward_history.push_back(0);
     game_history.to_play_history.push_back(game.to_play());
+    game_history.legal_actions.push_back(game.legal_actions());
 
     int hist_idx_start = 0;
     int hist_idx_end = 0;
 
+    // Render
     if (render) { game.render(); }
 
     // Find temperature using the temperature schedule
@@ -124,7 +127,7 @@ void play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts,
         // Choose action according to current player
         if (opponent_type == OpponentTypes::Self || game.to_play() == config.muzero_player) {
             // Find action using mcts
-            mcts_stats = mcts.run(stacked_observation, game.legal_actions(), game.to_play(), true);
+            mcts_stats = mcts.run(stacked_observation, game.legal_actions(), game.to_play(), !is_evaluator);
             action = select_action(mcts_stats, temperature, rng);
             // Only store root statistics if we performed an mcts search
             game_history.store_search_statistics(mcts_stats.root_value, mcts_stats.emperical_policy);
@@ -156,6 +159,7 @@ void play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts,
         game_history.observation_history.push_back(observation);
         game_history.reward_history.push_back(step_return.reward);
         game_history.to_play_history.push_back(game.to_play());
+        game_history.legal_actions.push_back(game.legal_actions());
         ++hist_idx_end;
 
         // Send history slice if game over or exceed maximum history length
@@ -175,6 +179,48 @@ void play_game(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts,
         add_evaluator_stats(shared_stats, game_history, config.muzero_player, render);
     } else {
         shared_stats->add_actor_stats(game_history.action_history.size() - 1, 1);
+    }
+}
+
+// Perform reanalyze
+void reanalyze(const muzero_config::MuZeroConfig& config, algorithm::MCTS& mcts,
+               std::shared_ptr<PrioritizedReplayBuffer> reanalyze_buffer,
+               std::shared_ptr<SharedStats> shared_stats, std::mt19937& rng, util::StopToken* stop) {
+    for (int step = 1; !stop->stop_requested(); ++step) {
+        // Check if we have enough samples and sleep if not
+        if (!reanalyze_buffer->can_sample()) {
+            absl::SleepFor(absl::Milliseconds(1000));
+            continue;
+        }
+
+        // Sample
+        std::tuple<int, GameHistory> sample = reanalyze_buffer->sample_game(rng);
+        int history_id = std::get<0>(sample);
+        GameHistory game_history = std::get<1>(sample);
+
+        // Iterate over history
+        for (int i = 0; i < (int)game_history.root_values.size(); ++i) {
+            if (stop->stop_requested()) { return; }
+            // Get stacked observation and re-run MCTS
+            Observation stacked_observation = game_history.get_stacked_observations(
+                i, config.stacked_observations, config.observation_shape, config.action_channels,
+                config.action_representation_initial);
+            MCTSReturn mcts_stats = mcts.run(stacked_observation, game_history.legal_actions[i],
+                                             game_history.to_play_history[i], true);
+
+            // Update values
+            game_history.root_values[i] = mcts_stats.root_value;
+            game_history.child_visits[i] = mcts_stats.emperical_policy;
+        }
+
+        // Update game history to buffer
+        // If buffer removed this history because we are overriding due to being at max size, this will do
+        // nothing (but this should be a low probability event, and all that happens is 1 wasted cycle of
+        // reanalyze)
+        reanalyze_buffer->update_game_history(history_id, game_history);
+
+        // Update reanalyze stats
+        shared_stats->add_reanalyze_game((int)game_history.root_values.size());
     }
 }
 
@@ -200,6 +246,18 @@ void self_play_evaluator(const muzero_config::MuZeroConfig& config, std::unique_
     // Continue to play games until we are told to stop
     for (int game_num = 1; !stop->stop_requested(); ++game_num) {
         play_game(config, mcts, *game, shared_stats, rng, nullptr, true, false, stop);
+    }
+}
+
+// Reanalyze actor logic
+void reanalyze_actor(const muzero_config::MuZeroConfig& config,
+                     std::shared_ptr<PrioritizedReplayBuffer> reanalyze_buffer, int actor_num,
+                     std::shared_ptr<Evaluator> vpr_eval, std::shared_ptr<SharedStats> shared_stats,
+                     util::StopToken* stop) {
+    MCTS mcts(config, config.seed + actor_num, vpr_eval);
+    std::mt19937 rng(config.seed + actor_num);
+    for (int game_num = 1; !stop->stop_requested(); ++game_num) {
+        reanalyze(config, mcts, reanalyze_buffer, shared_stats, rng, stop);
     }
 }
 

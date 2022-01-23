@@ -12,13 +12,12 @@ namespace muzero_cpp {
 using namespace types;
 namespace buffer {
 
-PrioritizedReplayBuffer::PrioritizedReplayBuffer(const muzero_config::MuZeroConfig &config)
+PrioritizedReplayBuffer::PrioritizedReplayBuffer(const muzero_config::MuZeroConfig &config, int max_size, const std::string &name)
     : alpha_(config.per_alpha),
       beta_(config.per_beta),
       epsilon_(config.per_epsilon),
       beta_increment_(config.per_beta_increment),
       discount_(config.discount),
-      batch_size_(config.batch_size),
       min_sample_size_(config.min_sample_size),
       num_stacked_observations_(config.stacked_observations),
       action_channels_(config.action_channels),
@@ -26,8 +25,9 @@ PrioritizedReplayBuffer::PrioritizedReplayBuffer(const muzero_config::MuZeroConf
       num_unroll_steps_(config.num_unroll_steps),
       obs_shape_(config.observation_shape),
       action_rep_func_(config.action_representation_initial),
-      tree_(config.replay_buffer_size, absl::StrCat(config.path, "/buffer/")),
-      path_(absl::StrCat(config.path, "/buffer/")) {
+      tree_(max_size, absl::StrCat(config.path, "/buffer/"), absl::StrCat(name, "_sumtree")),
+      path_(absl::StrCat(config.path, "/buffer/")),
+      name_(name) {
     std::filesystem::create_directories(path_);
 }
 
@@ -81,22 +81,21 @@ std::tuple<int, GameHistory> PrioritizedReplayBuffer::sample_game(std::mt19937 &
     absl::MutexLock lock(&m_);
     std::uniform_int_distribution<> uniform_dist(1, tree_.get_num_histories());
     int history_id = uniform_dist(rng);
-    GameHistory history = tree_.get_history(history_id);
-    return {history_id, history};
+    return {history_id, tree_.get_history(history_id)};
 }
 
 // Get a batched sample from the replay buffer
-Batch PrioritizedReplayBuffer::sample(std::mt19937 &rng) {
+Batch PrioritizedReplayBuffer::sample(std::mt19937 &rng, int batch_size) {
     absl::MutexLock lock(&m_);
     // Update beta
     beta_ = std::min(1.0, beta_ + beta_increment_);
-    double priority_segment = tree_.total_priority() / batch_size_;
+    double priority_segment = tree_.total_priority() / batch_size;
 
     Batch samples;
-    samples.num_samples = batch_size_;
+    samples.num_samples = batch_size;
 
     // Sample N items for batch
-    for (int i = 0; i < batch_size_; ++i) {
+    for (int i = 0; i < batch_size; ++i) {
         // Get sample via priority weighting
         std::uniform_real_distribution<double> uniform_dist(priority_segment * i, priority_segment * (i + 1));
         double value = uniform_dist(rng);
@@ -122,12 +121,12 @@ Batch PrioritizedReplayBuffer::sample(std::mt19937 &rng) {
     }
 
     // Get importance sampling weights
-    for (int i = 0; i < batch_size_; ++i) {
+    for (int i = 0; i < batch_size; ++i) {
         samples.priorities[i] =
             std::pow(tree_.get_size() * samples.priorities[i] / tree_.total_priority(), -beta_);
     }
     double max_value = *std::max_element(samples.priorities.begin(), samples.priorities.end());
-    for (int i = 0; i < batch_size_; ++i) {
+    for (int i = 0; i < batch_size; ++i) {
         samples.priorities[i] /= max_value;
     }
 
@@ -144,7 +143,7 @@ void PrioritizedReplayBuffer::update_game_history(int history_id, const GameHist
 // Save the replay buffer
 void PrioritizedReplayBuffer::save() {
     absl::MutexLock lock(&m_);
-    const std::string path = absl::StrCat(path_, "priority_buffer.nop");
+    const std::string path = absl::StrCat(path_, name_, ".nop");
     nop::Serializer<nop::StreamWriter<std::ofstream>> serializer{path};
     serializer.Write(this->alpha_);
     serializer.Write(this->beta_);
@@ -155,7 +154,7 @@ void PrioritizedReplayBuffer::save() {
 void PrioritizedReplayBuffer::load() {
     absl::MutexLock lock(&m_);
     // Check if we should quick exit because we are missiing files.
-    const std::string path = absl::StrCat(path_, "priority_buffer.nop");
+    const std::string path = absl::StrCat(path_, name_, ".nop");
     if (!std::filesystem::exists(path)) {
         std::cerr << "Error: " << path << " does not exist. Resuming with empty buffer." << std::endl;
         return;

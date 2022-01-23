@@ -9,51 +9,11 @@ namespace muzero_cpp {
 using namespace types;
 using namespace buffer;
 
-// Reanalyze thread logic.
-// Continuously updates samples root value estimates using the most recent model
-void reanalyze(const muzero_config::MuZeroConfig& config, std::shared_ptr<Evaluator> vpr_eval,
-               std::shared_ptr<PrioritizedReplayBuffer> replay_buffer,
-               std::shared_ptr<SharedStats> shared_stats, util::StopToken* stop) {
-    std::mt19937 rng(config.seed);
-    // Continue to reanalyze until we are done
-    for (int step = 1; !stop->stop_requested(); ++step) {
-        // Check if we have enough samples and sleep if not
-        if (!replay_buffer->can_sample()) {
-            absl::SleepFor(absl::Milliseconds(1000));
-            continue;
-        }
-
-        // Sample
-        std::tuple<int, GameHistory> sample = replay_buffer->sample_game(rng);
-        int history_id = std::get<0>(sample);
-        GameHistory game_history = std::get<1>(sample);
-
-        // Not efficient, ideally we would batch and send to model once but this works
-        // Reanalyze root values by sending to most recent model
-        std::vector<double> reanalysed_predicted_root_values;
-        for (int i = 0; i < (int)game_history.root_values.size(); ++i) {
-            Observation stacked_observation = game_history.get_stacked_observations(
-                i, config.stacked_observations, config.observation_shape, config.action_channels,
-                config.action_representation_initial);
-            VPRNetModel::InferenceOutputs inference_output = vpr_eval->InitialInference(stacked_observation);
-            reanalysed_predicted_root_values.push_back(inference_output.value);
-        }
-
-        // Set root values to updated values
-        game_history.reanalysed_predicted_root_values = reanalysed_predicted_root_values;
-
-        // Store history back in buffer
-        replay_buffer->update_game_history(history_id, game_history);
-
-        // Update stats to reflect number of 
-        shared_stats->add_reanalyze_game(1);
-    }
-}
-
 // Learner thread logic.
 // Continuously updates the muzero network model
 void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_manager,
            std::shared_ptr<PrioritizedReplayBuffer> replay_buffer,
+           std::shared_ptr<PrioritizedReplayBuffer> reanalyze_buffer,
            ThreadedQueue<GameHistory>* trajectory_queue, std::shared_ptr<SharedStats> shared_stats,
            util::StopToken* stop) {
     const int device_id = 0;
@@ -72,6 +32,7 @@ void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_mana
             if (trajectory) {
                 ++num_trajectories;
                 replay_buffer->save_game_history(trajectory.value());
+                reanalyze_buffer->save_game_history(trajectory.value());
             }
         }
 
@@ -83,20 +44,37 @@ void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_mana
 
         // Learning step (scope so model given back immediately)
         {
-            // Set first device off-limits from inference if requested
-            device_manager->SetLearning(config.explicit_learning);
             // Ask manager for model
             DeviceManager::DeviceLoan model = device_manager->Get(config.batch_size, device_id);
-            // Sample and send to model
-            // The learner needs a non-const reference due to torch requiring non-cost pointers for tensor initialization
-            Batch batch = replay_buffer->sample(rng);
-            VPRNetModel::LossInfo loss = model->Learn(batch);
-            // Update stats and handoff model back 
-            shared_stats->set_loss(loss.total_loss, loss.value, loss.policy, loss.reward);
-            device_manager->SetLearning(false);
 
-            // Update PER using the loss info
-            replay_buffer->update_history_priorities(loss.indices, loss.errors);
+            // Sample and send to model
+            // Here we find ratio of reanalyze to self play samples
+            int num_reanalyze_samples = static_cast<int>(config.train_reanalyze_ratio * config.batch_size);
+            int num_fresh_samples = config.batch_size - num_reanalyze_samples;
+            Batch batch = replay_buffer->sample(rng, num_fresh_samples);
+            if (num_reanalyze_samples > 0) {
+                batch += reanalyze_buffer->sample(rng, num_reanalyze_samples);
+            }
+
+            // The learner needs a non-const reference due to torch requiring non-cost pointers for tensor
+            // initialization
+            VPRNetModel::LossInfo loss = model->Learn(batch);
+            // Update stats and handoff model back
+            shared_stats->set_loss(loss.total_loss, loss.value, loss.policy, loss.reward);
+
+            // Update PER using the loss info for each buffer type
+            std::vector<int> indices_replay =
+                std::vector<int>(loss.indices.begin(), loss.indices.begin() + num_fresh_samples);
+            std::vector<double> errors_replay =
+                std::vector<double>(loss.errors.begin(), loss.errors.begin() + num_fresh_samples);
+            replay_buffer->update_history_priorities(indices_replay, errors_replay);
+            if (num_reanalyze_samples > 0) {
+                std::vector<int> indices_reanalyze =
+                    std::vector<int>(loss.indices.begin() + num_fresh_samples, loss.indices.end());
+                std::vector<double> errors_reanalyze =
+                    std::vector<double>(loss.errors.begin() + num_fresh_samples, loss.errors.end());
+                reanalyze_buffer->update_history_priorities(indices_reanalyze, errors_reanalyze);
+            }
         }
 
         // Checkpoint models and buffer
@@ -107,6 +85,7 @@ void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_mana
                 if (i != device_id) { device_manager->Get(0, i)->LoadCheckpoint(checkpoint_path); }
             }
             replay_buffer->save();
+            reanalyze_buffer->save();
             shared_stats->save(VPRNetModel::kMostRecentCheckpointStep);
             std::cout << "\33[2K\rcheckpoint saved: " << checkpoint_path << std::endl;
         }
@@ -118,15 +97,6 @@ void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_mana
             }
             shared_stats->save(VPRNetModel::kMostRecentCheckpointStep);
             std::cout << "\33[2K\rmodel synced" << std::endl;
-        }
-
-        // Check if we should wait due to training being too fast
-        if (config.train_selfplay_ratio > 0) {
-            while (!stop->stop_requested() &&
-                   (double)step / std::max(1, shared_stats->get_num_played_steps()) >
-                       config.train_selfplay_ratio * 1.25) {
-                absl::SleepFor(absl::Milliseconds(500));
-            }
         }
 
         // Get updated step counter

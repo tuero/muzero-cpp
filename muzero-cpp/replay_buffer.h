@@ -26,14 +26,15 @@ namespace buffer {
 template <typename T>
 class SumTree {
 public:
-    SumTree(int capacity, const std::string &path)
+    SumTree(int capacity, const std::string &path, const std::string &name)
         : capacity_(capacity),
           num_entries_(0),
           position_(0),
           map_counter_(0),
           path_(path),
           tree_(2 * capacity - 1, 0),
-          data_(capacity, {0, 0}) {}
+          data_(capacity, {0, 0}),
+          name_(name) {}
     SumTree() = delete;
 
     /**
@@ -70,7 +71,7 @@ public:
      * @param history_id The ID of the history
      * @return The game history
      */
-    T get_history(int history_id) {
+    T& get_history(int history_id) {
         return hist_map_[history_id];
     }
 
@@ -89,9 +90,9 @@ public:
             int old_hist_id = data_[position_].second;
             if (old_hist_id > 0) {
                 --hist_count_[old_hist_id];
-                if (hist_count_[old_hist_id] == 0) { 
+                if (hist_count_[old_hist_id] == 0) {
                     num_entries_ -= hist_map_[old_hist_id].root_values.size();
-                    hist_map_.erase(old_hist_id); 
+                    hist_map_.erase(old_hist_id);
                 }
             }
             // Add
@@ -137,14 +138,14 @@ public:
      * @return full path of sum tree
      */
     std::string get_path() {
-        return absl::StrCat(path_, "sum_tree.nop");
+        return absl::StrCat(path_, name_, ".nop");
     }
 
     /**
      * Save the SumTree for resume training
      */
     void save() {
-        const std::string path = absl::StrCat(path_, "sum_tree.nop");
+        const std::string path = absl::StrCat(path_, name_, ".nop");
         nop::Serializer<nop::StreamWriter<std::ofstream>> serializer{path};
         serializer.Write(this->num_entries_);
         serializer.Write(this->position_);
@@ -160,7 +161,7 @@ public:
      */
     void load() {
         // Check if we should quick exit because we are missiing files.
-        const std::string path = absl::StrCat(path_, "sum_tree.nop");
+        const std::string path = absl::StrCat(path_, name_, ".nop");
         if (!std::filesystem::exists(path)) {
             std::cerr << "Error: " << path << " does not exist. Resuming with empty buffer." << std::endl;
             return;
@@ -199,12 +200,13 @@ private:
     std::unordered_map<int, T> hist_map_;        // Map containing stored histories
     std::unordered_map<int, int> hist_count_;    // Map containing reference counts to histories
     std::vector<std::pair<int, int>> data_;      // The data items the tree holds
+    std::string name_;                           // Name for storing/loading
 };
 
 // Prioritized replay
 class PrioritizedReplayBuffer {
 public:
-    PrioritizedReplayBuffer(const muzero_config::MuZeroConfig &config);
+    PrioritizedReplayBuffer(const muzero_config::MuZeroConfig &config, int max_size, const std::string &name);
     PrioritizedReplayBuffer() = delete;
 
     /**
@@ -221,19 +223,21 @@ public:
 
     /**
      * Sample a single game uniform randomly, used for reanalyze
+     * Can't just return a ref as it game history could be deleted, need to copy
      * @param rng Source of randomness
-     * @return Sampled game history along with the corresponding index
+     * @return Sampled game history reference and id
      */
     std::tuple<int, types::GameHistory> sample_game(std::mt19937 &rng);
 
     /**
      * Get a batched sample from the replay buffer
      * @param rng Source of randomness
+     * @param batch_size Number of samples to get
      * @return Flat vectors representing the priorities, indicies, actions, observations, target rewards,
      * target values, target policies, and gradient scale. The caller needs to convert into tensors of the
      * correct size.
      */
-    types::Batch sample(std::mt19937 &rng);
+    types::Batch sample(std::mt19937 &rng, int batch_size);
 
     /**
      * Insert a game history into the replay buffer.
@@ -278,7 +282,6 @@ private:
     double epsilon_;                       // Epsilon added to error to avoid 0's
     double beta_increment_;                // How much to increment beta (caps at 1.0)
     double discount_;                      // Discounting factor for future rewards/values
-    int batch_size_;                       // Samples per batch
     int min_sample_size_;                  // Minimum samples needed to be stored before we can sample
     int num_stacked_observations_;         // Number of stacked observations used
     int action_channels_;                  // Numbers of channels in the action representation
@@ -289,6 +292,7 @@ private:
         action_rep_func_;                 // Function to convert raw action ints to the channel representation
     SumTree<types::GameHistory> tree_;    // Underlying sum tree datastructure
     std::string path_;                    // Base path for storing saved buffer
+    std::string name_;                    // Name of buffer for store/loading
     absl::Mutex m_;                       // Lock for multithreading access
 };
 

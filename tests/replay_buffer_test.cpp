@@ -53,7 +53,7 @@ void replay_buffer_test() {
     config.action_representation_initial = action_to_observation;
     config.replay_buffer_size = 10000;
     config.path = ".";
-    PrioritizedReplayBuffer replay_buffer(config);
+    PrioritizedReplayBuffer replay_buffer(config, config.replay_buffer_size, "buffer");
 
     // Insert items
     int counter = 0;
@@ -66,7 +66,7 @@ void replay_buffer_test() {
 
     // Sample
     std::mt19937 rng(0);
-    auto samples = replay_buffer.sample(rng);
+    auto samples = replay_buffer.sample(rng, config.batch_size);
     REQUIRE_TRUE(samples.num_samples == config.batch_size);
     REQUIRE_TRUE((int)samples.actions.size() == config.batch_size * (config.num_unroll_steps + 1));
     REQUIRE_TRUE((int)samples.target_rewards.size() == config.batch_size * (config.num_unroll_steps + 1));

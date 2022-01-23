@@ -23,6 +23,7 @@ public:
     struct Stats {
         int training_step;                   // Number of training steps by the learner thread
         int num_reanalyze_games_;            // Number of games reanalyzed
+        int num_reanalyze_steps_;            // Number of steps reanalyzed
         int num_played_games;                // Number of played games by the actors
         int num_played_steps;                // Number of played game steps by the actors
         double evaluator_episode_length;     // Length of games played by evaluator
@@ -42,6 +43,7 @@ public:
     SharedStats()
         : training_step_(0),
           num_reanalyze_games_(0),
+          num_reanalyze_steps_(0),
           num_played_games_(0),
           num_played_steps_(0),
           evaluator_episode_length_(0),
@@ -64,7 +66,8 @@ public:
     // Increment number of games reanalyzed
     void add_reanalyze_game(int steps) {
         absl::MutexLock lock(&m_);
-        num_reanalyze_games_ += steps;
+        num_reanalyze_games_ += 1;
+        num_reanalyze_steps_ += steps;
     }
 
     // Set the stats from an actor
@@ -109,7 +112,7 @@ public:
         time_queue_.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(
                                   std::chrono::system_clock::now().time_since_epoch())
                                   .count());
-        played_steps_.push_back(num_played_steps_);
+        played_steps_.push_back(num_played_steps_ + num_reanalyze_steps_);
         train_steps_.push_back(training_step_);
         if (time_queue_.size() > 10) {
             time_queue_.erase(time_queue_.begin());
@@ -142,6 +145,7 @@ public:
 
         return {training_step_,
                 num_reanalyze_games_,
+                num_reanalyze_steps_,
                 num_played_games_,
                 num_played_steps_,
                 eval_ep_len,
@@ -207,6 +211,7 @@ public:
 private:
     int training_step_;                                // Number of training steps by the learner thread
     int num_reanalyze_games_;                          // Number of games reanalyzed
+    int num_reanalyze_steps_;                          // Number of steps reanalyzed
     int num_played_games_;                             // Number of played games by the actors
     int num_played_steps_;                             // Number of played game steps by the actors
     std::vector<int> evaluator_episode_length_;        // Length of games played by evaluator
@@ -226,10 +231,11 @@ private:
     absl::Mutex m_;                                    // Lock for multithreading access
 
     // Required data to be stored/loaded
-    NOP_STRUCTURE(SharedStats, training_step_, num_reanalyze_games_, num_played_games_, num_played_steps_,
-                  evaluator_episode_length_, evaluator_total_reward_, evaluator_mean_value_,
-                  evaluator_muzero_reward_, evaluator_opponent_reward_, total_loss_, value_loss_,
-                  policy_loss_, reward_loss_, logging_step_, time_queue_, played_steps_, train_steps_);
+    NOP_STRUCTURE(SharedStats, training_step_, num_reanalyze_games_, num_reanalyze_steps_, num_played_games_,
+                  num_played_steps_, evaluator_episode_length_, evaluator_total_reward_,
+                  evaluator_mean_value_, evaluator_muzero_reward_, evaluator_opponent_reward_, total_loss_,
+                  value_loss_, policy_loss_, reward_loss_, logging_step_, time_queue_, played_steps_,
+                  train_steps_);
 };
 
 }    // namespace muzero_cpp
