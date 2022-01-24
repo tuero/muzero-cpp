@@ -137,7 +137,7 @@ $ ./examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --pat
 The choice of using C++ was for environment constraints and added performance that could be gained instead of dealing with threading in python. 
 There are certainly many improvements that can be made to this codebase, and they are welcomed.
 
-The following metrics are on training the Connect4 environment on a stock Intel 7820X, 64GB of system memory, Nvidia 3090, running on Ubuntu 20.04 using the Release build flags. The runtime configuration is given in the command window below for an extended training session. Note that Connect4 in much fewer training steps.
+The following metrics are on training the Connect4 environment on a stock Intel 7820X, 64GB of system memory, Nvidia 3090, running on Ubuntu 20.04 using the Release build flags. The runtime configuration is given in the command window below for an extended training session. Note that Connect4 can be solved in much fewer training steps, this is simply a performance test.
 - Total training time of 9:48:43
 - ~13.5 training steps per second
 - ~39.7 self play steps per second
