@@ -86,7 +86,7 @@ $ ./examples/connect4/muzero_connect4 --num_actors=5 --num_reananlyze_actors=5 -
 To pause the training, issue an abort signal `<CTRL + C>` and the current state of the algorithm will be checkpointed (checkpoints are done periodically as well).
 
 ### Resume Training
-To resume training, issue the same command which was used for training, but add the flag `--resume 1`. Note that some command line arguments can be changed, while others are checked and enforced (i.e. replay buffer max size). Not every case is checked, so it is best to use exactly the same arguments.
+To resume training, issue the same command which was used for training, but add the flag `--resume`. Note that some command line arguments can be changed, while others are checked and enforced (i.e. replay buffer max size). Not every case is checked, so it is best to use exactly the same arguments.
 ```shell
 $ cd build
 
