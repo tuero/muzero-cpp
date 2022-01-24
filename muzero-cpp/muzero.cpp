@@ -124,7 +124,7 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
         std::cerr << "Train reanalyze ratio should be in range [0, 1)." << std::endl;
         return false;
     }
-    // If we wan't to use reananlyze, we probably should have some reananlyze actors
+    // If we want to use reananlyze, we probably should have some reananlyze actors
     if (config.train_reanalyze_ratio > 0 and config.num_reanalyze_actors == 0) {
         std::cerr << "If using reananlyze then set config.num_reanalyze_actors > 0." << std::endl;
         return false;
