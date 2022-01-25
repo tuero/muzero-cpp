@@ -231,13 +231,18 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
         t.join();
     }
 
-    // Before we exit, save buffer
-    std::cout << "Saving replay buffer." << std::endl;
+    // Before we exit, save buffers
+    std::cout << "Saving replay/reanalyze buffers." << std::endl;
     replay_buffer->save();
+    reanalyze_buffer->save();
 
     // Save shared stats
     std::cout << "Saving shared stats." << std::endl;
     shared_stats->save(VPRNetModel::kMostRecentCheckpointStep);
+
+    // Save model
+    std::cout << "Saving shared stats." << std::endl;
+    device_manager.Get(0, 0)->SaveCheckpoint(VPRNetModel::kMostRecentCheckpointStep);
 
     std::cout << "Exiting cleanly." << std::endl;
     return true;
