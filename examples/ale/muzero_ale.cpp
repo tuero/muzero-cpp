@@ -26,6 +26,7 @@ public:
         was_real_done_ = true;
         lives_ = 0;
         rng_.seed(seed);
+        env_.setInt("random_seed", seed);
         // Assumes the static variables are set before factory constructs
         env_.loadROM(game_file_path);
         env_.reset_game();
