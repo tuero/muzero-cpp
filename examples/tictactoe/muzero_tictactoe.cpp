@@ -105,8 +105,6 @@ private:
     int step_;         // current step of the environment
 };
 
-MuZeroNetworkConfig network_config;
-
 // Encode action as feature plane of values 1/action
 Observation encode_action(Action action) {
     static const int num_actions = TicTacToe::action_space().size();
@@ -136,16 +134,7 @@ int main(int argc, char** argv) {
     parse_flags(argc, argv);
     MuZeroConfig config = get_initial_config();
 
-    // Set network config
-    network_config.resnet_channels = 64;
-    network_config.representation_blocks = 3;
-    network_config.dynamics_blocks = 3;
-    network_config.prediction_blocks = 3;
-    network_config.learning_rate = 3e-4;
-    network_config.l2_weight_decay = 1e-4;
-
     // Set specific values for the game
-    config.network_config = network_config;
     config.observation_shape = TicTacToe::obs_shape();
     config.action_space = TicTacToe::action_space();
     config.network_config.normalize_hidden_states = true;

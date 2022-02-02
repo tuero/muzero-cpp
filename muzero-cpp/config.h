@@ -64,10 +64,10 @@ struct MuZeroConfig {
                                                 // in 2-player board games
 
     // Value and reward categorical transformation
-    double min_reward;                      // minimum possible reward
-    double max_reward;                      // maximum possible reward
-    double min_value;                       // minimum possible value
-    double max_value;                       // maximum possible value
+    double min_reward = -300;               // minimum possible reward
+    double max_reward = 300;                // maximum possible reward
+    double min_value = -300;                // minimum possible value
+    double max_value = 300;                 // maximum possible value
     bool use_contractive_mapping = true;    // Use contractive mapping (https://arxiv.org/abs/1805.11593)
 
     // Evaluate
@@ -77,10 +77,10 @@ struct MuZeroConfig {
                                            // influence training (self, random, expert)
 
     // Self play
-    int max_moves = -1;                  // Maximum number of moves if selfplay game is not finished
-                                         // (leave negative to ignore)
-    int num_simulations = 50;            // Number of MCTS simulations per move
-    double discount = 0.997;             // Discount factor for reward
+    int max_moves = -1;          // Maximum number of moves if selfplay game is not finished
+                                 // (leave negative to ignore)
+    int num_simulations = 50;    // Number of MCTS simulations per move
+    double discount = 0.997;     // Discount factor for reward
 
     // Root prior dirichlet exploration noise
     double dirichlet_alpha = 0.3;       // Dirichlet distribution alpha parameter
@@ -100,7 +100,8 @@ struct MuZeroConfig {
     int num_unroll_steps = 5;        // Number of steps to unroll for each sample
     int max_history_len = -1;    // Maximum size of history before sending to replay buffer. Use -1 for the
                                  // entire history to pushed as a single sample (instead of splitting up)
-    double train_reanalyze_ratio = 0;    // Ratio training samples that come from reanalyze (0 to not have reanalzye)
+    double train_reanalyze_ratio =
+        0;    // Ratio training samples that come from reanalyze (0 to not have reanalzye)
 
     // Replay buffer (Prioritized replay)
     int replay_buffer_size = 100000;       // Number of total fresh self-play samples to store

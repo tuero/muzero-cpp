@@ -317,7 +317,7 @@ Observation encode_action_recurrent(Action action) {
 double get_softmax(int step) {
     if (step < 100000) {
         return 1.0;
-    } else if (step < 250000) {
+    } else if (step < 200000) {
         return 0.5;
     }
     return 0.25;
@@ -355,33 +355,12 @@ int main(int argc, char** argv) {
         ALEEnv::minimal_actions = temp_env.get_minimal_actions();
     }
 
-    // Set network config
-    network_config.downsample = true;
-    network_config.resnet_channels = 64;
-    network_config.representation_blocks = 3;
-    network_config.dynamics_blocks = 3;
-    network_config.prediction_blocks = 3;
-    network_config.reward_reduced_channels = 64;
-    network_config.policy_reduced_channels = 64;
-    network_config.value_reduced_channels = 64;
-    network_config.reward_head_layers = {64, 64};
-    network_config.policy_head_layers = {64, 64};
-    network_config.value_head_layers = {64, 64};
-    network_config.learning_rate = 3e-4;
-    network_config.l2_weight_decay = 1e-4;
-
     // Set specific values for the game
-    config.network_config = network_config;
     config.observation_shape = ALEEnv::obs_shape();
     config.action_space = ALEEnv::action_space();
     config.network_config.normalize_hidden_states = true;
     config.action_channels = 1;
     config.num_players = 1;
-    // These should probably be manually set by the caller depending on the game.
-    // config.min_reward = -10;
-    // config.max_reward = 10;
-    // config.min_value = -10;
-    // config.max_value = 10;
     config.opponent_type = OpponentTypes::Self;
     config.action_representation_initial = encode_action_initial;
     config.action_representation_recurrent = encode_action_recurrent;
