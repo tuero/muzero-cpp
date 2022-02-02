@@ -5,6 +5,8 @@ There are still many optimization tricks that can be used to improve efficiency,
 
 **Note**: I can't guarantee that this implementation is bug-free, as I don't have the computational resources to compare against some of the reported results.
 
+![pong_animation](./assets/muzero_atari_pong.gif)
+
 ## Features
 - Multi-threaded async actor inference
 - Multiple device (CPUs and GPUs) support for learning and inference
@@ -15,6 +17,7 @@ There are still many optimization tricks that can be used to improve efficiency,
 - Model, buffer, and metric checkpointing for resuming
 - Easy to add environments
 - Play against the learned model (2 player games) in testing
+- Support for ALE
 
 ## Dependencies
 The following libraries are used in this project. They are included as git submodules (minus libtorch), so it is recommended you install them by using the `git --recursive` argument.
@@ -22,6 +25,7 @@ The following libraries are used in this project. They are included as git submo
 - [libnop](https://github.com/google/libnop/tree/35e800d81f28c632956c5a592e3cbe8085ecd430) (35e800d), also requires `protobuf-compiler` and `libprotobuf-dev`
 - [tensorboard_logger](https://github.com/RustingSword/tensorboard_logger/tree/11d2b46c66c55c2a1b7a2dae43179f01b908bf5a) (11d2b46)
 - [libtorch](https://pytorch.org/)
+- [ALE](https://github.com/mgbellemare/Arcade-Learning-Environment), `sdl2` and `sdl2_image` if using the ALE wrapper (**Note**: v0.7.3 and older versions of ALE doesn't link with libtorch. A merge request is pending to fix this, which is linked [here](https://github.com/mgbellemare/Arcade-Learning-Environment/pull/445) as a temporary fix before it gets merged.)
 
 Some source files are also taken from (and) modified [OpenSpiel](https://github.com/deepmind/open_spiel), and have the corresponding Copyright notice included as well.
 
@@ -101,6 +105,7 @@ As an example, if we trained on Connect4 from the above, we test our agent as su
 ```shell
 $ cd build
 
+# Test the pretrained model
 $ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --test
 ``` 
 The opponent listed in the `config.opponent_type` is used during testing. 
@@ -130,7 +135,14 @@ Included is a pretrained model on the Connect4 environment.
 To test the pretrained model, use the following command:
 ```shell
 $ cd build
-$ ./examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --test
+$ ./examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --resnet_channels=64 --representation_blocks=3 --dynamics_blocks=3 --prediction_blocks=3 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --test
+``` 
+
+Included as well is a pretrained model on the pong ALE environment. Note that we do not include any ROMS.
+To test the pretrained model, use the following command:
+```shell
+$ cd build
+$ ./examples/ale/muzero_ale --num_actors=5 --num_reanalyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices=cuda:0,cuda:0 --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=10 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=25 --max_training_steps=2000000 --path /home/<USER>/Documents/muzero-cpp/examples/ale/pong-reanalyze-50 --replay_buffer_size=20000 --reanalyze_buffer_size=100000 --train_reanalyze_ratio=0.5 --max_history_len=200 --episodic_pong --game_file_path /home/<USER>/Documents/roms/pong.bin --stacked_observations=6 --frame_skip=4 --reward_reduced_channels=64 --policy_reduced_channels=64 --value_reduced_channels=64 --reward_head_layers=64,64 --policy_head_layers=64,64 --value_head_layers=64,64 --downsample --min_reward=-1 --max_reward=1 --min_value=-21 --max_value=21 --test
 ``` 
 
 ## Performance
@@ -143,7 +155,7 @@ The following metrics are on training the Connect4 environment on a stock Intel 
 - ~39.7 self play steps per second
 
 ```shell
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=500000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=500000 --resnet_channels=64 --representation_blocks=3 --dynamics_blocks=3 --prediction_blocks=3 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
 ``` 
 
 The full training statistics for this run can be found at the Tensorboard.dev page [here](https://tensorboard.dev/experiment/hLfo8K8fREi4uWP6LrlwIA/#scalars&_smoothingWeight=0.914).
