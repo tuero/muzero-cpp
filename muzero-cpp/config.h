@@ -47,6 +47,8 @@ struct MuZeroConfig {
     int recurrent_inference_threads = 1;       // Number of threads to perform recurrent inference
     int max_training_steps = 100000;           // Maximum number of training steps to perform
     bool resume = false;                       // Flag to resume from last checkpoint
+    types::CheckpointStep testing_checkpoint =
+        types::CheckpointStep::kMostRecentCheckpointStep;    // Which checkpoint to load for testing
 
     // Game
     types::ObservationShape observation_shape;    // Observation shape (channel, height, width),

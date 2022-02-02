@@ -64,10 +64,10 @@ You can also add additional command line arguments by adding `ABSL_FLAG`s (see t
 
 Some important arguments to consider:
 - `path` The directory which will be used for checkpointing and resuming.
-- `devices` Torch style comma separated list of devices which a model will be spawned on for each item. A minimum of 2 is needed, with the first listed being used solely for training). E.g. 
-    - `--path "cuda:0,cuda:0"`
-    - `--path "cuda:0,cuda:1"`
-    - `--path "cuda:0,cpu"`
+- `devices` Torch style comma separated list of devices which a model will be spawned on for each item. A minimum of 2 is needed for training, with the first listed being used solely for training and the rest using lagged target network for inference/testing. E.g. 
+    - `--devices "cuda:0,cuda:0"`
+    - `--devices "cuda:0,cuda:1"`
+    - `--devices "cuda:0,cpu"`
 - `min_sample_size` Should be at least as big as `batch_size`
 - `num_actors` Number of self-play actor threads to spawn. 
 - `num_reanalyze_actors` Number of reanalyze actor threads to spawn. 
@@ -101,12 +101,18 @@ $ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_
 ### Testing Against the Trained Agent
 The `muzero_cpp::play_test_model` function can be used to test a trained model. 
 The invocation should be the same as used to train (only some of the arguments are needed but its safe to use all the args used in training), but with an addition `--test` command line argument (assuming you implement this, see the examples for details).
+By default, the most recent checkpointed model during training will be loaded. 
+To load the best performance model during training, use the `--testing_checkpoint=-2` argument.
+
 As an example, if we trained on Connect4 from the above, we test our agent as such:
 ```shell
 $ cd build
 
-# Test the pretrained model
+# Test the pretrained model using the most recent checkpoint
 $ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --test
+
+# Test the pretrained model using the most recent checkpoint
+$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --testing_checkpoint=-2 --test
 ``` 
 The opponent listed in the `config.opponent_type` is used during testing. 
 For 2 player games, you can manually play against your bot by setting `config.opponent_type = types::OpponentTypes::Human`.
@@ -142,7 +148,7 @@ Included as well is a pretrained model on the pong ALE environment. Note that we
 To test the pretrained model, use the following command:
 ```shell
 $ cd build
-$ ./examples/ale/muzero_ale --num_actors=5 --num_reanalyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices=cuda:0,cuda:0 --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=10 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=25 --max_training_steps=2000000 --path /home/<USER>/Documents/muzero-cpp/examples/ale/pong-reanalyze-50 --replay_buffer_size=20000 --reanalyze_buffer_size=100000 --train_reanalyze_ratio=0.5 --max_history_len=200 --episodic_pong --game_file_path /home/<USER>/Documents/roms/pong.bin --stacked_observations=6 --frame_skip=4 --reward_reduced_channels=64 --policy_reduced_channels=64 --value_reduced_channels=64 --reward_head_layers=64,64 --policy_head_layers=64,64 --value_head_layers=64,64 --downsample --min_reward=-1 --max_reward=1 --min_value=-21 --max_value=21 --test
+$ ./examples/ale/muzero_ale --num_actors=5 --num_reanalyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices=cuda:0,cuda:0 --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=10 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=25 --max_training_steps=2000000 --path /home/<USER>/Documents/muzero-cpp/examples/ale/pong --replay_buffer_size=20000 --reanalyze_buffer_size=100000 --train_reanalyze_ratio=0.5 --max_history_len=200 --episodic_pong --game_file_path /home/<USER>/Documents/roms/pong.bin --stacked_observations=6 --frame_skip=4 --reward_reduced_channels=64 --policy_reduced_channels=64 --value_reduced_channels=64 --reward_head_layers=64,64 --policy_head_layers=64,64 --value_head_layers=64,64 --downsample --min_reward=-1 --max_reward=1 --min_value=-21 --max_value=21 --test
 ``` 
 
 ## Performance

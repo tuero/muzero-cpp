@@ -25,6 +25,7 @@ ABSL_DECLARE_FLAG(int, initial_inference_threads);
 ABSL_DECLARE_FLAG(int, recurrent_inference_threads);
 ABSL_DECLARE_FLAG(int, max_training_steps);
 ABSL_DECLARE_FLAG(bool, resume);
+ABSL_DECLARE_FLAG(int, testing_checkpoint);
 ABSL_DECLARE_FLAG(int, stacked_observations);
 ABSL_DECLARE_FLAG(double, value_upperbound);
 ABSL_DECLARE_FLAG(double, value_lowerbound);

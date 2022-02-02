@@ -68,8 +68,6 @@ public:
         types::Observation encoded_state;    // Encoded state
     };
 
-    enum CheckpointStep { kMostRecentCheckpointStep = -1, kInvalidCheckpointStep = -2 };
-
     VPRNetModel(const muzero_config::MuZeroConfig& config, const std::string& device = "/cpu:0");
 
     // Move only, not copyable.

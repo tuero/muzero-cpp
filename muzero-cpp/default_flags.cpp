@@ -23,6 +23,8 @@ ABSL_FLAG(int, recurrent_inference_threads, 1, "Number of threads to run recurre
 ABSL_FLAG(int, max_training_steps, 1e6, "Maximum number of training steps");
 ABSL_FLAG(bool, resume, false, "Flag to resume from most recent checkpoint");
 ABSL_FLAG(int, stacked_observations, 0, "Maximum number previous observations to use");
+ABSL_FLAG(int, testing_checkpoint, -1,
+          "Testing checkpoint to load: -1 for most recent, -2 for best performing");
 ABSL_FLAG(double, value_upperbound, NINF_D, "Known upperbound for game value MCTS scaling");
 ABSL_FLAG(double, value_lowerbound, INF_D, "Known lowerbound for game value MCTS scaling");
 ABSL_FLAG(double, min_reward, -300, "Minimum possible reward");
@@ -154,6 +156,9 @@ MuZeroConfig get_initial_config() {
     for (const auto &r : absl::GetFlag(FLAGS_value_head_layers)) {
         config.network_config.value_head_layers.push_back(std::stoi(r));
     }
+
+    // Try to cast test checkpoint to enum
+    config.testing_checkpoint = static_cast<CheckpointStep>(absl::GetFlag(FLAGS_testing_checkpoint));
 
     return config;
 }

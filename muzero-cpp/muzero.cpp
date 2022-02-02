@@ -68,9 +68,10 @@ bool play_test_model(const MuZeroConfig& config,
     }
 
     // Sync all models so that they have the same weights
+    // Here we load either most recent or best performance checkpoint step
     {
         for (int i = 0; i < device_manager.Count(); ++i) {
-            device_manager.Get(0, i)->LoadCheckpoint(VPRNetModel::kMostRecentCheckpointStep);
+            device_manager.Get(0, i)->LoadCheckpoint(config.testing_checkpoint);
         }
     }
 
@@ -140,9 +141,9 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
     // Sync all models so that they have the same weights
     {
         // If not resuming then we checkpoint current starting point
-        if (!config.resume) { device_manager.Get(0)->SaveCheckpoint(VPRNetModel::kMostRecentCheckpointStep); }
+        if (!config.resume) { device_manager.Get(0)->SaveCheckpoint(kMostRecentCheckpointStep); }
         for (int i = 0; i < device_manager.Count(); ++i) {
-            device_manager.Get(0, i)->LoadCheckpoint(VPRNetModel::kMostRecentCheckpointStep);
+            device_manager.Get(0, i)->LoadCheckpoint(kMostRecentCheckpointStep);
         }
     }
 
@@ -168,7 +169,7 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
     auto shared_stats = std::make_shared<SharedStats>();
     shared_stats->set_path(shared_stats_path);
     if (config.resume) {
-        shared_stats->load(VPRNetModel::kMostRecentCheckpointStep);
+        shared_stats->load(kMostRecentCheckpointStep);
         std::cout << "Resuming at training step: " << shared_stats->get_training_step() << std::endl;
     }
 
@@ -238,11 +239,11 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
 
     // Save shared stats
     std::cout << "Saving shared stats." << std::endl;
-    shared_stats->save(VPRNetModel::kMostRecentCheckpointStep);
+    shared_stats->save(kMostRecentCheckpointStep);
 
     // Save model
     std::cout << "Saving shared stats." << std::endl;
-    device_manager.Get(0, 0)->SaveCheckpoint(VPRNetModel::kMostRecentCheckpointStep);
+    device_manager.Get(0, 0)->SaveCheckpoint(kMostRecentCheckpointStep);
 
     std::cout << "Exiting cleanly." << std::endl;
     return true;

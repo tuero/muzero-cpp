@@ -18,6 +18,7 @@ void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_mana
            util::StopToken* stop) {
     const int device_id = 0;
     std::mt19937 rng(config.seed);
+    double max_reward = NINF_D;
 
     // Could be resuming, so ask what the current step is
     int step = shared_stats->get_training_step();
@@ -80,23 +81,32 @@ void learn(const muzero_config::MuZeroConfig& config, DeviceManager* device_mana
         // Checkpoint models and buffer
         if (step % config.checkpoint_interval == 0) {
             std::string checkpoint_path =
-                device_manager->Get(0, device_id)->SaveCheckpoint(VPRNetModel::kMostRecentCheckpointStep);
+                device_manager->Get(0, device_id)->SaveCheckpoint(kMostRecentCheckpointStep);
             for (int i = 0; i < device_manager->Count(); ++i) {
                 if (i != device_id) { device_manager->Get(0, i)->LoadCheckpoint(checkpoint_path); }
             }
             replay_buffer->save();
             reanalyze_buffer->save();
-            shared_stats->save(VPRNetModel::kMostRecentCheckpointStep);
+            shared_stats->save(kMostRecentCheckpointStep);
             std::cout << "\33[2K\rcheckpoint saved: " << checkpoint_path << std::endl;
         }
         if (step % config.model_sync_interval == 0) {
             std::string checkpoint_path =
-                device_manager->Get(0, device_id)->SaveCheckpoint(VPRNetModel::kMostRecentCheckpointStep);
+                device_manager->Get(0, device_id)->SaveCheckpoint(kMostRecentCheckpointStep);
             for (int i = 0; i < device_manager->Count(); ++i) {
                 if (i != device_id) { device_manager->Get(0, i)->LoadCheckpoint(checkpoint_path); }
             }
-            shared_stats->save(VPRNetModel::kMostRecentCheckpointStep);
+            shared_stats->save(kMostRecentCheckpointStep);
             std::cout << "\33[2K\rmodel synced" << std::endl;
+        }
+
+        // Checkpoint best performance model
+        double current_reward = shared_stats->get_evaluator_muzero_reward();
+        if (current_reward > max_reward) {
+            max_reward = current_reward;
+            std::string checkpoint_path =
+                device_manager->Get(0, 1)->SaveCheckpoint(kBestPerformanceCheckpointStep);
+            std::cout << "\33[2K\rcheckpoint saved: " << checkpoint_path << std::endl;
         }
 
         // Get updated step counter

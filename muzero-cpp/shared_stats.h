@@ -162,6 +162,13 @@ public:
                 delta_train / delta_selfplay};
     }
 
+    // Get the running average evaluator muzero reward
+    double get_evaluator_muzero_reward() {
+        absl::MutexLock lock(&m_);
+        return std::reduce(evaluator_muzero_reward_.begin(), evaluator_muzero_reward_.end()) /
+               std::max((int)evaluator_muzero_reward_.size(), 1);
+    }
+
     // Get total number of training steps
     int get_training_step() {
         absl::MutexLock lock(&m_);

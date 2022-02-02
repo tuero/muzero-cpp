@@ -54,6 +54,9 @@ enum class OpponentTypes {
     Human      // Human types in input action (see abstract_game.h / Examples)
 };
 
+// Checkpoint steps
+enum CheckpointStep { kMostRecentCheckpointStep = -1, kBestPerformanceCheckpointStep = -2 };
+
 // AbstractGame
 // These are the values returned after taking a step in the environment
 struct StepReturn {
