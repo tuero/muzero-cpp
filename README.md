@@ -25,7 +25,7 @@ The following libraries are used in this project. They are included as git submo
 - [libnop](https://github.com/google/libnop/tree/35e800d81f28c632956c5a592e3cbe8085ecd430) (35e800d), also requires `protobuf-compiler` and `libprotobuf-dev`
 - [tensorboard_logger](https://github.com/RustingSword/tensorboard_logger/tree/11d2b46c66c55c2a1b7a2dae43179f01b908bf5a) (11d2b46)
 - [libtorch](https://pytorch.org/)
-- [ALE](https://github.com/mgbellemare/Arcade-Learning-Environment), `sdl2` and `sdl2_image` if using the ALE wrapper (**Note**: v0.7.3 and older versions of ALE doesn't link with libtorch. A merge request is pending to fix this, which is linked [here](https://github.com/mgbellemare/Arcade-Learning-Environment/pull/445) as a temporary fix before it gets merged.)
+- [ALE](https://github.com/mgbellemare/Arcade-Learning-Environment), `sdl2` and `sdl2_image` if using the ALE wrapper (**Note**: v0.7.4 or newer is required, as older versions of ALE doesn't link with libtorch.)
 
 Some source files are also taken from (and) modified [OpenSpiel](https://github.com/deepmind/open_spiel), and have the corresponding Copyright notice included as well.
 
@@ -71,7 +71,7 @@ Some important arguments to consider:
 - `min_sample_size` Should be at least as big as `batch_size`
 - `num_actors` Number of self-play actor threads to spawn. 
 - `num_reanalyze_actors` Number of reanalyze actor threads to spawn. 
-- `train_reanalyze_ratio` Ratio of samples the learner will sample from the reananlyze buffer. This should probably match the ratio of actors you spawn for self-play/reanalyze to keep things efficient.
+- `train_reanalyze_ratio` Ratio of samples the learner will sample from the reanalyze buffer. This should probably match the ratio of actors you spawn for self-play/reanalyze to keep things efficient.
 - It is also recommended to have `initial_inference_batch_size` and `recurrent_inference_batch_size` equal to the number of total actors, as this will increase the efficiency by batching inference queries rather than having threads wait for a model to become available.
 
 ### Training
@@ -83,7 +83,7 @@ $ cd build
 $ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
 
 # Run the connect4 binary with 50% of samples coming from reanalyze
-$ ./examples/connect4/muzero_connect4 --num_actors=5 --num_reananlyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --train_reanalyze_ratio=0.5 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-50
+$ ./examples/connect4/muzero_connect4 --num_actors=5 --num_reanalyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --train_reanalyze_ratio=0.5 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-50
 ```
 
 ### Safely Pausing

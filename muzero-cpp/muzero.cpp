@@ -120,14 +120,14 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
         std::cerr << "Need to specify at least 2 devices." << std::endl;
         return false;
     }
-    // Can't have 0 samples being taken from reananlyze
+    // Can't have 0 samples being taken from reanalyze
     if (config.train_reanalyze_ratio == 1) {
         std::cerr << "Train reanalyze ratio should be in range [0, 1)." << std::endl;
         return false;
     }
-    // If we want to use reananlyze, we probably should have some reananlyze actors
+    // If we want to use reanalyze, we probably should have some reanalyze actors
     if (config.train_reanalyze_ratio > 0 and config.num_reanalyze_actors == 0) {
-        std::cerr << "If using reananlyze then set config.num_reanalyze_actors > 0." << std::endl;
+        std::cerr << "If using reanalyze then set config.num_reanalyze_actors > 0." << std::endl;
         return false;
     }
 

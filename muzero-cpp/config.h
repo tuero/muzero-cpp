@@ -167,7 +167,7 @@ struct MuZeroConfig {
         output_str += absl::StrFormat("\tDevices: %s\n", devices);
         output_str += absl::StrFormat("\tExplicit learning: %s\n", explicit_learning);
         output_str += absl::StrFormat("\tNumber of actors: %d\n", num_actors);
-        output_str += absl::StrFormat("\tNumber of reananlyze actors: %d\n", num_reanalyze_actors);
+        output_str += absl::StrFormat("\tNumber of reanalyze actors: %d\n", num_reanalyze_actors);
         output_str += absl::StrFormat("\tNumber of evaluator actors: %d\n", num_evaluators);
         output_str += absl::StrFormat("\tInitial inference batch size: %d\n", initial_inference_batch_size);
         output_str +=
