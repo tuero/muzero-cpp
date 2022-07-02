@@ -165,7 +165,7 @@ struct MuZeroConfig {
         output_str += absl::StrFormat("\tModel sync interval: %d\n", model_sync_interval);
         output_str += absl::StrFormat("\tPath: %s\n", path);
         output_str += absl::StrFormat("\tDevices: %s\n", devices);
-        output_str += absl::StrFormat("\tExplicit learning: %s\n", explicit_learning);
+        output_str += absl::StrFormat("\tExplicit learning: %d\n", explicit_learning);
         output_str += absl::StrFormat("\tNumber of actors: %d\n", num_actors);
         output_str += absl::StrFormat("\tNumber of reanalyze actors: %d\n", num_reanalyze_actors);
         output_str += absl::StrFormat("\tNumber of evaluator actors: %d\n", num_evaluators);
