@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <random>
 #include <string>
@@ -53,7 +54,9 @@ public:
 
     void update_hist(int history_id, const T &hist) {
         // Only update if we have not lost reference to this game history ID
-        if (hist_map_.find(history_id) != hist_map_.end()) { hist_map_[history_id] = hist; }
+        if (hist_map_.find(history_id) != hist_map_.end()) {
+            hist_map_[history_id] = hist;
+        }
     }
 
     /**
@@ -71,7 +74,7 @@ public:
      * @param history_id The ID of the history
      * @return The game history
      */
-    T& get_history(int history_id) {
+    T &get_history(int history_id) {
         return hist_map_[history_id];
     }
 
@@ -187,7 +190,9 @@ private:
     int retrieve(int index, double value) {
         int left = 2 * index + 1;
         int right = left + 1;
-        if (left >= (int)tree_.size()) { return index; }
+        if (left >= (int)tree_.size()) {
+            return index;
+        }
         return (value <= tree_[left]) ? retrieve(left, value) : retrieve(right, value - tree_[left]);
     }
 
