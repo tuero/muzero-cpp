@@ -211,6 +211,7 @@ bool muzero(const MuZeroConfig& config, std::function<std::unique_ptr<AbstractGa
     // Start to learn
     std::cout << "Starting learning." << std::endl;
     if (config.resume) { replay_buffer->load(); }
+    if (config.resume) { reanalyze_buffer->load(); }
     learn(config, &device_manager, replay_buffer, reanalyze_buffer, &trajectory_queue, shared_stats, &stop);
 
     // Empty the queue so that the actors can exit.
