@@ -1,0 +1,16 @@
+{
+    "learning_rate": 0.000300,
+    "l2_weight_decay": 0.000100,
+    "downsample": true,
+    "normalize_hidden_states": true,
+    "resnet_channels": 128,
+    "representation_blocks": 4,
+    "dynamics_blocks": 4,
+    "prediction_blocks": 4,
+    "reward_reduced_channels": 64,
+    "policy_reduced_channels": 64,
+    "value_reduced_channels": 64,
+    "reward_head_layers": [64, 64],
+    "policy_head_layers": [64, 64],
+    "value_head_layers": [64, 64]
+}

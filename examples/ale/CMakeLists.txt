@@ -1,24 +1,31 @@
-include_directories(../..)
+find_package(ale CONFIG REQUIRED)
+find_package(OpenCV CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
+find_package(SDL2_image CONFIG REQUIRED)
 
-find_package(ale REQUIRED)
-find_package(OpenCV REQUIRED)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/")
-find_package(SDL2 REQUIRED)
-find_package(SDL2_image REQUIRED)
+add_executable(muzero_ale muzero_ale.cpp)
+target_link_libraries(muzero_ale PRIVATE muzero)
+target_link_libraries(muzero_ale PRIVATE ale::ale-lib ${OpenCV_LIBS})
+target_link_libraries(muzero_ale
+        PRIVATE
+        $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+        $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+    )
+target_link_libraries(muzero_ale PRIVATE $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>)
 
-if(NOT ${ale_FOUND})
-    MESSAGE(STATUS "Could not locate ALE.")
-endif()
-if(NOT ${OpenCV_FOUND})
-    MESSAGE(STATUS "Could not locate OpenCV.")
-endif()
+# Treat third-party headers as system headers so their warnings are not
+# reported by this target's strict warning flags.
+target_include_directories(muzero_ale SYSTEM PRIVATE ${OpenCV_INCLUDE_DIRS})
 
-if(${ale_FOUND} AND ${OpenCV_FOUND})
-    if (ale_VERSION VERSION_LESS "0.7.3")
-        message(STATUS "ALE requires version >= 0.7.4 to link against libtorch.")
-    else()
-        add_executable(muzero_ale muzero_ale.cpp)
-        include_directories(${OpenCV_INCLUDE_DIRS} ${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS})
-        target_link_libraries(muzero_ale ale::ale-lib ${OpenCV_LIBS} ${SDL2_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} muzero_cpp)
+if(TARGET ale::ale-lib)
+    get_target_property(_ale_include_dirs ale::ale-lib INTERFACE_INCLUDE_DIRECTORIES)
+    if(_ale_include_dirs)
+        target_include_directories(muzero_ale SYSTEM PRIVATE ${_ale_include_dirs})
     endif()
+endif()
+
+# With static LTO builds, GCC may emit ALE-originated string overflow warnings
+# during the final executable link pass (WPA/LTRANS). Suppress at link time.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_options(muzero_ale PRIVATE -Wno-stringop-overflow)
 endif()

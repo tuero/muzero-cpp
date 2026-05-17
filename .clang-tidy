@@ -1,0 +1,23 @@
+---
+Checks: "-*,
+  abseil-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  bugprone-use-after-move,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -misc-non-private-member-variables-in-classes,
+  -misc-include-cleaner,
+  -header-filters=.*
+"
+WarningsAsErrors: ""
+UseColor: true
+CheckOptions:
+  - key: modernize-use-nullptr.NullMacros
+    value: NULL
+  - key: cppcoreguidelines-rvalue-reference-param-not-moved.AllowPartialMove
+    value: true
+  - key: misc-include-cleaner.MissingIncludes
+    value: false

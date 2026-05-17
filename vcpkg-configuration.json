@@ -1,0 +1,19 @@
+{
+  "default-registry": {
+    "kind": "git",
+    "baseline": "edffab1bcd2cb5b8c17d6ba34d5651ea0bf82979",
+    "repository": "https://github.com/microsoft/vcpkg"
+  },
+  "registries": [
+    {
+      "kind": "git",
+      "baseline": "9d8c61fcde5e9818088749040814bdb4b633fa3b",
+      "reference": "master",
+      "repository": "https://github.com/tuero/vcpkg-registry",
+      "packages": [
+        "arcade-learning-environment",
+        "tensorboard-logger"
+      ]
+    }
+  ]
+}
