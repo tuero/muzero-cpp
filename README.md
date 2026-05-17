@@ -16,6 +16,7 @@ There are still many optimization tricks that can be used to improve efficiency,
 - Complex action representation options
 - Priority replay buffer
 - Tensorboard metric logging
+- Model configuration through json (see `models/`)
 - Model, buffer, and metric checkpointing for resuming
 - Easy to add environments
 - Play against the learned model (2 player games) in testing
@@ -23,54 +24,56 @@ There are still many optimization tricks that can be used to improve efficiency,
 
 ## Dependencies
 
-The following libraries are used in this project. They are included as git submodules (minus libtorch), so it is recommended you install them by using the `git --recursive` argument.
+The following libraries are used in this project. We ues vcpkg to manage the dependencies (except libtorch)
 
-- [abseil-cpp](https://github.com/abseil/abseil-cpp/tree/ec0d76f1d012cc1a4b3b08dfafcfc5237f5ba2c9) (ec0d76f)
-- [libnop](https://github.com/google/libnop/tree/35e800d81f28c632956c5a592e3cbe8085ecd430) (35e800d), also requires `protobuf-compiler` and `libprotobuf-dev`
-- [tensorboard_logger](https://github.com/RustingSword/tensorboard_logger/tree/11d2b46c66c55c2a1b7a2dae43179f01b908bf5a) (11d2b46)
+- [abseil-cpp](https://github.com/abseil/abseil-cpp)
+- [libnop](https://github.com/google/libnop)
+- [tensorboard_logger](https://github.com/RustingSword/tensorboard_logger)
 - [libtorch](https://pytorch.org/)
 - [ALE](https://github.com/mgbellemare/Arcade-Learning-Environment), `sdl2`, `sdl2_image`, and `OpenCV` if using the ALE wrapper (**Note**: v0.7.4 or newer is required, as older versions of ALE doesn't link with libtorch.)
 
 Some source files are also taken from (and) modified [OpenSpiel](https://github.com/deepmind/open_spiel), and have the corresponding Copyright notice included as well.
 
-## Installing
-
-These instructions will help you install the program. It should compile fine on most systems, but YMMV. The following systems have been tested on:
-
-- Ubuntu 20.04: gcc/g++ 9.3.0, Clang/Clang++ 10.0.0, libtorch (10.0, CUDA 11.3)
-- macOS Catalina 10.15.2: Apple Clang 11.0.0, libtorch (10.0, CPU)
-
-There are issues if trying to compile on gcc/g++ 8.4 which has a segfault with `<filesystem>`.
-
-First, install [libtorch](https://pytorch.org/).
-Then, follow the below steps and replace the libtorch path with one which matches your system. This will compile a library which can be included in your projects (see example usage below).
-
+## Building Examples
+All dependencies are managed through [vcpkg](https://vcpkg.io/en/), except for `libtorch` (pytorch's C++ frontend). 
+The easiest way to get `libtorch` is through the python package.
+First, create a virtual environment and install pytorch:
 ```shell
-# Install dependencies for tensorboard logging
-sudo apt install protobuf-compiler
-sudo apt install libprotobuf-dev
-
-# Clone this repository
-$ git clone --recursive https://github.com/tuero/muzero-cpp.git
-
-# Enter the repository
-$ cd muzero-cpp
-
-# Compile
-$ mkdir build && cd build
-$ cmake -DCMAKE_PREFIX_PATH=/usr/local/libtorch -DCMAKE_BUILD_TYPE=Debug ..
-# or
-$ cmake -DCMAKE_PREFIX_PATH=/usr/local/libtorch -DCMAKE_BUILD_TYPE=Release ..
-$ make -j$(nproc)
+conda create -n muzero python=3.12
+conda activate muzero
+pip3 install torch torchvision
 ```
 
-The ALE examples are not built by default, due to the extra dependencies.
-If you want to build them, uncomment the build line in `examples/CMakeLists.txt`.
+Next, the following environment variables are required for the toolchain packages to be found:
+- `CC`: The path to your C compiler
+- `CXX`: The path to your C++23 compliant compiler
+- `LIBTORCH_ROOT`: The path to the libtorch package, which we will point towards the just installed python package
+
+For example:
+```shell
+export CC=gcc-15.2
+export CXX=g++-15.2
+# Ensure you activated the muzero virtual environment
+export LIBTORCH_ROOT=`python3 -c 'import torch;print(torch.utils.cmake_prefix_path)'`
+```
+
+Finally, we use `CMakePresets.json` which sets all the required CMake variables.
+```shell
+cmake --preset=release-linux
+cmake --build --preset=release-linux -- -j8
+```
+
+> [!IMPORTANT]
+> If you see a CMake warning about an RPATH cycle involving `libtorch/libc10`
+> (often caused by vcpkg reusing an older cached build of a dependency which references a different virtual environment),
+> delete the build folder, and request to not reuse cached artifacts when configuring:
+> `VCPKG_BINARY_SOURCES=clear cmake --preset=release-linux`
+
 
 ## Example Usage
 
 Included are a few examples which show how to add a new environment, and interact with the learning and testing.
-There are predefined command line arguments to parameterize the MuZero algorithm (see [default_flags.cpp](./muzero-cpp/default_flags.cpp) or use the --help option when running). Note that the devices are listed as comma separated, following the `torch` notation.
+There are predefined command line arguments to parameterize the MuZero algorithm (see [default_flags.cpp](./include/muzero/default_flags.cpp) or use the --help option when running). Note that the devices are listed as comma separated, following the `torch` notation.
 You can also add additional command line arguments by adding `ABSL_FLAG`s (see the examples).
 
 Some important arguments to consider:
@@ -91,13 +94,11 @@ Some important arguments to consider:
 One can train Connect4 by the following:
 
 ```shell
-$ cd build
-
 # Run the connect4 binary without reanalyze
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
+./build/release-linux/examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --export_path=examples/connect4/reanalyze-00 --model_path=models/model_small.json
 
 # Run the connect4 binary with 50% of samples coming from reanalyze
-$ ./examples/connect4/muzero_connect4 --num_actors=5 --num_reanalyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --train_reanalyze_ratio=0.5 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-50
+./build/release-linux/examples/connect4/muzero_connect4 --num_actors=5 --num_reanalyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --train_reanalyze_ratio=0.5 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --export_path=examples/connect4/reanalyze-50 --model_path=models/model_small.json
 ```
 
 ### Safely Pausing
@@ -109,30 +110,17 @@ To pause the training, issue an abort signal `<CTRL + C>` and the current state 
 To resume training, issue the same command which was used for training, but add the flag `--resume`. Note that some command line arguments can be changed, while others are checked and enforced (i.e. replay buffer max size). Not every case is checked, so it is best to use exactly the same arguments.
 
 ```shell
-$ cd build
-
 # Run the connect4 binary with the appropriate arguments
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --resume
+./build/release-linux/examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --export_path=examples/connect4/reanalyze-00 --model_path=models/model_small.json --resume
 ```
 
 ### Testing Against the Trained Agent
 
-The `muzero_cpp::play_test_model` function can be used to test a trained model.
+The `muzero::play_test_model` function can be used to test a trained model.
 The invocation should be the same as used to train (only some of the arguments are needed but its safe to use all the args used in training), but with an addition `--test` command line argument (assuming you implement this, see the examples for details).
 By default, the most recent checkpointed model during training will be loaded.
 To load the best performance model during training, use the `--testing_checkpoint=-2` argument.
 
-As an example, if we trained on Connect4 from the above, we test our agent as such:
-
-```shell
-$ cd build
-
-# Test the pretrained model using the most recent checkpoint
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --test
-
-# Test the pretrained model using the most recent checkpoint
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=250000 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --testing_checkpoint=-2 --test
-```
 
 The opponent listed in the `config.opponent_type` is used during testing.
 For 2 player games, you can manually play against your bot by setting `config.opponent_type = types::OpponentTypes::Human`.
@@ -142,8 +130,8 @@ For 2 player games, you can manually play against your bot by setting `config.op
 The tensorboard metric file is saved at `config.path/metrics/tfevents.pb`. To view the metrics while training, run your normal tensorboard command:
 
 ```shell
-$ cd examples/connect4/
-$ tensorboard --logdir=./metrics
+cd examples/connect4/
+tensorboard --logdir=./metrics
 ```
 
 Note that this requires a tensorboard python installation (i.e. conda or pip).
@@ -153,10 +141,10 @@ Note that this requires a tensorboard python installation (i.e. conda or pip).
 To add a new environment, you must implement the following:
 
 - Create a new directory containing your environment under `./examples`
-- A game which extends [abstract_game.h](./muzero-cpp/abstract_game.h)
-- A `MuZeroConfig` which specifies the `MuZeroNetworkConfig` network struct, action_representation`function, and`visit_softmax_temperature` function at a minimum (these can't really be specified as command line arguments)
-- A source file which contains the entry point (`main` with call to `muzero_cpp::muzero(config, game_factory<YOUR_GAME_CLASS_NAME>)`)
-- An optional added function call to `muzero_cpp::play_test_model` to test your trained agent
+- A game which extends [abstract_game.h](./include/muzero/abstract_game.h)
+- A `Config` which specifies the `action_representation` function, and`visit_softmax_temperature` function at a minimum (these can't really be specified as command line arguments)
+- A source file which contains the entry point (`main` with call to `muzero::muzero(config, game_factory<YOUR_GAME_CLASS_NAME>)`)
+- An optional added function call to `muzero::play_test_model` to test your trained agent
 - Create a `CMakeLists.txt` to compile your example and add the directory to the parent `CMakeLists.txt`
 
 See the examples for proper usage.
@@ -167,16 +155,14 @@ Included is a pretrained model on the Connect4 environment.
 To test the pretrained model, use the following command:
 
 ```shell
-$ cd build
-$ ./examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --resnet_channels=64 --representation_blocks=3 --dynamics_blocks=3 --prediction_blocks=3 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00 --test
+./build/release-linux/examples/connect4/muzero_connect4 --devices="cpu" --num_simulations 50 --export_path=examples/connect4/reanalyze-00 --model_path=models/model_small.json --test
 ```
 
 Included as well is a pretrained model on the pong ALE environment. Note that we do not include any ROMS.
 To test the pretrained model, use the following command:
 
 ```shell
-$ cd build
-$ ./examples/ale/muzero_ale --num_actors=5 --num_reanalyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices=cuda:0,cuda:0 --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=10 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=25 --max_training_steps=2000000 --path /home/<USER>/Documents/muzero-cpp/examples/ale/pong --replay_buffer_size=20000 --reanalyze_buffer_size=100000 --train_reanalyze_ratio=0.5 --max_history_len=200 --episodic_pong --game_file_path /home/<USER>/Documents/roms/pong.bin --stacked_observations=6 --frame_skip=4 --reward_reduced_channels=64 --policy_reduced_channels=64 --value_reduced_channels=64 --reward_head_layers=64,64 --policy_head_layers=64,64 --value_head_layers=64,64 --downsample --min_reward=-1 --max_reward=1 --min_value=-21 --max_value=21 --test
+./build/release-linux/examples/ale/muzero_ale --num_actors=5 --num_reanalyze_actors=5 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices=cuda:0,cuda:0 --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=10 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=25 --max_training_steps=2000000 --export_path=examples/ale/pong --model_path=models/model_ale.json --replay_buffer_size=20000 --reanalyze_buffer_size=100000 --train_reanalyze_ratio=0.5 --max_history_len=200 --episodic_pong --game_file_path=pong.bin --stacked_observations=6 --frame_skip=4 --min_reward=-1 --max_reward=1 --min_value=-21 --max_value=21 --test
 ```
 
 ## Performance
@@ -191,10 +177,8 @@ The following metrics are on training the Connect4 environment on a stock Intel 
 - ~39.7 self play steps per second
 
 ```shell
-$ ./examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=500000 --resnet_channels=64 --representation_blocks=3 --dynamics_blocks=3 --prediction_blocks=3 --path /home/<USER>/Documents/muzero-cpp/examples/connect4/reanalyze-00
+./build/release-linux/examples/connect4/muzero_connect4 --num_actors=10 --initial_inference_batch_size=10 --recurrent_inference_batch_size=10 --devices="cuda:0,cuda:0" --batch_size=256 --min_sample_size=512 --value_loss_weight=0.25 --td_steps=42 --num_unroll_steps=5 --checkpoint_interval=10000 --model_sync_interval=1000 --num_simulations=50 --max_training_steps=500000 --export_path=examples/connect4/reanalyze-00 --model_path=models/model_small.json
 ```
-
-The full training statistics for this run can be found at the Tensorboard.dev page [here](https://tensorboard.dev/experiment/hLfo8K8fREi4uWP6LrlwIA/#scalars&_smoothingWeight=0.914).
 
 ## Tensorboard Metrics
 

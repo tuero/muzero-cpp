@@ -1,0 +1,17 @@
+{
+  "dependencies": [
+    "abseil",
+    {
+      "name": "arcade-learning-environment",
+      "features": [
+        "sdl"
+      ]
+    },
+    "libnop",
+    "nlohmann-json",
+    "opencv2",
+    "sdl2",
+    "tensorboard-logger",
+    "sdl2-image"
+  ]
+}

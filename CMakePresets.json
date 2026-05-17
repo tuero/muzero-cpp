@@ -1,0 +1,95 @@
+{
+  "version": 4,
+  "configurePresets": [
+    {
+      "name": "core",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "$env{LIBTORCH_ROOT}",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "linux",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/triplets",
+        "VCPKG_TARGET_TRIPLET": "x64-linux-static",
+        "VCPKG_HOST_TRIPLET": "x64-linux-static",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/linux-toolchain.cmake"
+      }
+    },
+    {
+      "name": "osx",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_OVERLAY_TRIPLETS": "${sourceDir}/cmake/triplets",
+        "VCPKG_TARGET_TRIPLET": "arm64-osx-static",
+        "VCPKG_HOST_TRIPLET": "arm64-osx-static",
+        "VCPKG_CHAINLOAD_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchains/osx-toolchain.cmake"
+      }
+    },
+    {
+      "name": "release-linux",
+      "inherits": ["core", "linux"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-DNDEBUG -O3 -Wall -Wextra -Wconversion -Wsign-conversion -Wunused -Wshadow",
+        "MUZERO_BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "release-osx",
+      "inherits": ["core", "osx"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_FLAGS": "-DNDEBUG -O3 -Wall -Wextra -Wconversion -Wsign-conversion -Wunused -Wshadow",
+        "MUZERO_BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "debug-linux",
+      "inherits": ["core", "linux"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-ggdb3 -O0 -fno-omit-frame-pointer -Wall -Wextra -Wconversion -Wsign-conversion -Wunused -Wshadow",
+        "MUZERO_BUILD_EXAMPLES": "ON"
+      }
+    },
+    {
+      "name": "debug-osx",
+      "inherits": ["core", "osx"],
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-g -O0 -fno-omit-frame-pointer -Wall -Wextra -Wconversion -Wsign-conversion -Wunused -Wshadow",
+        "MUZERO_BUILD_EXAMPLES": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "release-linux",
+      "displayName": "Release (Linux)",
+      "configurePreset": "release-linux"
+    },
+    {
+      "name": "release-osx",
+      "displayName": "Release (OSX)",
+      "configurePreset": "release-osx"
+    },
+    {
+      "name": "debug-linux",
+      "displayName": "Debug (Linux)",
+      "configurePreset": "debug-linux"
+    },
+    {
+      "name": "debug-osx",
+      "displayName": "Debug (OSX)",
+      "configurePreset": "debug-osx"
+    }
+  ]
+}
+

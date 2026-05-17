@@ -1,45 +1,80 @@
-cmake_minimum_required (VERSION 3.12)
+cmake_minimum_required (VERSION 3.25)
 
-# Set flags
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(ABSL_PROPAGATE_CXX_STD ON)
+project(muzero VERSION 2.0.0 LANGUAGES CXX)
 
-# Message out the current compiler flags
-message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
-message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
+# Build options
+option(MUZERO_BUILD_EXAMPLES "Build muzero examples" OFF)
+option(MUZERO_BUILD_TESTS "Build muzero tests" OFF)
 
-project(muzero-cpp)
+# Let muzero_SHARED_LIBS override BUILD_SHARED_LIBS
+if(DEFINED muzero_SHARED_LIBS)
+    set(BUILD_SHARED_LIBS "${muzero_SHARED_LIBS}")
+endif()
 
-find_package(Torch REQUIRED)
-# Need to temporary disable the prefix path for torch, as it has a protobuf which interferes here
-set(CMAKE_PREFIX_PATH "")
+# CPP library
+add_library(muzero)
+add_library(muzero::muzero ALIAS muzero)
+set_target_properties(muzero PROPERTIES
+                      VERSION ${muzero_VERSION}
+                      SOVERSION ${muzero_VERSION_MAJOR}
+                      POSITION_INDEPENDENT_CODE ON
+)
+target_include_directories(
+    muzero PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>")
+target_compile_features(muzero PUBLIC cxx_std_20)
 
-# Testing
-enable_testing()
+# Include the install rules if the user wanted them (included by default when top-level)
+string(COMPARE EQUAL "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}" is_top_level)
+option(muzero_INCLUDE_PACKAGING "Include packaging rules for muzero" "${is_top_level}")
+if(muzero_INCLUDE_PACKAGING)
+    add_subdirectory(packaging)
+endif()
 
-# Build abseil and include for linking for all child targets
-add_subdirectory(external/abseil-cpp)
-link_libraries( 
-    absl::base
-    absl::flags
-    absl::flags_parse
-    absl::strings
-    absl::synchronization
-    absl::optional
-    absl::time
+# Public headers
+set(MUZERO_PUBLIC_HEADERS
+    include/muzero/abstract_game.h
+    include/muzero/config.h
+    include/muzero/muzero.h
+    include/muzero/types.h
 )
 
-# Build tensorboard_logger
-set(TEMP_CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH})
-add_subdirectory(external/tensorboard_logger)
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/tensorboard_logger/)
-link_libraries(tensorboard_logger)
+# External libs from vcpkg (unconditional)
+find_package(absl CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(tensorboard_logger CONFIG REQUIRED)
+find_package(Torch CONFIG REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
-# Let child targets include from external libraries not needed to be built as libraries
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/external/libnop/include)
+# Link external libs (unconditional)
+target_link_libraries(muzero PUBLIC 
+    absl::base 
+    absl::flat_hash_map 
+    absl::flat_hash_set 
+    absl::hash
+    absl::strings 
+    absl::flags
+    absl::flags_parse
+    absl::optional
+    absl::synchronization
+    absl::time
+)
+target_link_libraries(muzero PUBLIC nlohmann_json::nlohmann_json)
+target_link_libraries(muzero PRIVATE tensorboard_logger::tensorboard_logger)
+target_link_libraries(muzero PUBLIC ${TORCH_LIBRARIES})
 
-# Build child targets
-add_subdirectory(muzero-cpp)
-add_subdirectory(tests)
-add_subdirectory(examples)
+
+# Add headers to source listing
+target_sources(muzero PRIVATE ${MUZERO_PUBLIC_HEADERS})
+
+# Library source
+add_subdirectory(src)
+
+# Build examples
+if (MUZERO_BUILD_EXAMPLES)
+    message("MUZERO_BUILD_EXAMPLES=ON, building examples")
+    add_subdirectory(examples)
+else()
+    message("MUZERO_BUILD_EXAMPLES=OFF, skipping building examples")
+endif()
+
+

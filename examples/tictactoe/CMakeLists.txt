@@ -1,4 +1,3 @@
-include_directories(../..)
-
 add_executable(muzero_tictactoe muzero_tictactoe.cpp tictactoe.h)
-target_link_libraries(muzero_tictactoe PUBLIC muzero_cpp)
+target_link_libraries(muzero_tictactoe PRIVATE muzero)
+target_compile_features(muzero_tictactoe PUBLIC cxx_std_20)
