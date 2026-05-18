@@ -34,6 +34,71 @@ The following libraries are used in this project. We ues vcpkg to manage the dep
 
 Some source files are also taken from (and) modified [OpenSpiel](https://github.com/deepmind/open_spiel), and have the corresponding Copyright notice included as well.
 
+## Include to your Project
+To use this as a library and extend for your own games/environments, see the [muzero-example](https://github.com/tuero/muzero-example) repo.
+
+`muzero` is not part of the official registry for vcpkg,
+but is supported in my personal registry [here](https://github.com/tuero/vcpkg-registry).
+This is by far the easier way to use this library as it will pull in dependencies, and is really the only documented way.
+To add `tuero/vcpkg-registry` as a git registry to your vcpkg project:
+```json
+"registries": [
+...
+{
+    "kind": "git",
+    "repository": "https://github.com/tuero/vcpkg-registry",
+    "reference": "master",
+    "baseline": "<COMMIT_SHA>",
+    "packages": ["muzero", "arcade-learning-environment", "tensorboard-logger"]
+}
+]
+...
+```
+where `<COMMIT_SHA>` is the 40-character git commit sha in the registry's repository (you can find 
+this by clicking on the latest commit [here](https://github.com/tuero/vcpkg-registry) and looking 
+at the URL.
+
+```shell
+vcpkg add port muzero
+```
+
+Note that `torch` will look for the `libtorch` project in the environment variable `LIBTORCH_ROOT`, which is not part of the included dependencies.
+The easiest way to get `libtorch` is through the python package.
+First, create a virtual environment and install pytorch:
+```shell
+conda create -n muzero python=3.12
+conda activate muzero
+pip3 install torch torchvision
+```
+
+Then set the `LIBTORCH_ROOT` environment variable:
+```shell
+export LIBTORCH_ROOT=`python3 -c 'import torch;print(torch.utils.cmake_prefix_path)'`
+```
+
+Then in your project cmake:
+```cmake
+cmake_minimum_required(VERSION 3.25)
+project(my_project LANGUAGES CXX)
+
+find_package(muzero CONFIG REQUIRED)
+add_executable(main main.cpp)
+target_link_libraries(main PRIVATE muzero::muzero)
+```
+
+> [!IMPORTANT]
+> If you have pytorch installed in multiple virtual environments, you may get a configure error under the following scenario:
+> You configured this dependency through vcpkg with `LIBTORCH_ROOT` pointing to one virtual environment,
+> and then you trying to configure this dependency through vcpkg with `LIBTORCH_ROOT` pointing to another virtual environment.
+> 
+> You can use the triplet in the vcpkg-registry (or in `cmake/triplets`) which will include `LIBTORCH_ROOT` in the dependency ABI.
+>
+> If you still somehow see a CMake warning about an `RPATH` cycle involving `libtorch/libc10`
+> (often caused by vcpkg reusing an older cached build of a dependency and you aren't using the vcpkg registry triplet),
+> delete the build folder, and request to not reuse cached artifacts when configuring:
+> `VCPKG_BINARY_SOURCES=clear cmake --preset=release-linux`
+
+
 ## Building Examples
 All dependencies are managed through [vcpkg](https://vcpkg.io/en/), except for `libtorch` (pytorch's C++ frontend). 
 The easiest way to get `libtorch` is through the python package.
